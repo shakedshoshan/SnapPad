@@ -26,8 +26,8 @@ A lightweight, always-on-top Windows application for managing clipboard history 
 git clone https://github.com/yourusername/snappad.git
 cd snappad
 
-# 2. Run the automatic installer
-double-click install_and_run.bat
+# 2. Run the installer
+double-click install.bat
 ```
 
 ### Method 2: Manual Installation
@@ -41,18 +41,11 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### Method 3: Quick Launch
-
-```bash
-# For subsequent runs (installs dependencies if needed)
-double-click start_quicksave.bat
-```
-
 ## 🎮 Usage
 
 ### Starting the Application
 
-- **Quick Start**: Double-click `start_quicksave.bat`
+- **Quick Start**: Double-click `install.bat` (handles installation and startup)
 - **Command Line**: `python main.py`
 - **System Tray**: Look for the SnapPad icon in your system tray
 
@@ -121,7 +114,7 @@ Your data is stored securely in:
 
 To run SnapPad automatically when Windows starts:
 
-1. Create a shortcut to `start_quicksave.bat`
+1. Create a shortcut to `install.bat`
 2. Open Windows Startup folder:
    - Press `Win + R`
    - Type `shell:startup`
@@ -129,20 +122,17 @@ To run SnapPad automatically when Windows starts:
 3. Copy the shortcut to this folder
 4. Restart your computer to test
 
+Note: The `install.bat` file will automatically detect if SnapPad is already installed and just start the application.
+
 ## 🧪 Testing
 
-Run the comprehensive test suite:
+To test if SnapPad is working correctly:
 
-```bash
-python test_application.py
-```
-
-Tests include:
-- Module import verification
-- Database operations
-- Clipboard management
-- Hotkey registration
-- Configuration validation
+1. Run the application: `python main.py`
+2. Check the system tray for the SnapPad icon
+3. Test hotkeys: `Ctrl+Alt+S` (toggle dashboard), `Ctrl+Alt+N` (save note)
+4. Copy some text and verify it appears in the clipboard history
+5. Add a note and verify it's saved between sessions
 
 ## 🛠️ Troubleshooting
 
@@ -203,10 +193,8 @@ SnapPad/
 ├── 📋 clipboard_manager.py   # Clipboard monitoring & history
 ├── ⌨️ hotkey_manager.py      # Global hotkey management
 ├── 🖥️ dashboard.py           # PyQt6 user interface
-├── 🧪 test_application.py    # Comprehensive test suite
 ├── 📦 requirements.txt       # Python dependencies
-├── 🚀 install_and_run.bat    # Automatic installer
-├── ⚡ start_quicksave.bat    # Quick launcher
+├── 🚀 install.bat            # Complete installation & launcher
 └── 📖 README.md             # This documentation
 ```
 

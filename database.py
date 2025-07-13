@@ -70,7 +70,7 @@ class DatabaseManager:
             str: Full path to the database file
             
         Example:
-            C:\Users\Username\AppData\Roaming\SnapPad\snappad.db
+            C:\\Users\\Username\\AppData\\Roaming\\SnapPad\\snappad.db
         """
         # Get the user's AppData folder
         appdata = os.getenv('APPDATA', os.path.expanduser('~'))
