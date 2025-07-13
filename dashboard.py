@@ -425,6 +425,252 @@ class EditableNoteWidget(QWidget):
         self.note_copied.emit(self.note_data['content'])
 
 
+class NotesWindow(QMainWindow):
+    """
+    A dedicated window for displaying all notes in a larger, more readable format.
+    
+    This window provides:
+    - Centered positioning on screen
+    - Larger display area for better readability
+    - All the same functionality as the dashboard notes (edit, delete, copy)
+    - Auto-refresh when notes are updated
+    """
+    
+    def __init__(self, parent=None):
+        """
+        Initialize the notes window.
+        
+        Args:
+            parent: Parent widget (usually the main Dashboard)
+        """
+        super().__init__(parent)
+        self.parent_dashboard = parent
+        self.database_manager = None
+        
+        # Setup UI and window properties
+        self.setup_ui()
+        self.setup_window_properties()
+    
+    def setup_ui(self):
+        """
+        Set up the user interface for the notes window.
+        """
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        
+        # Set window styling
+        self.setStyleSheet("""
+            QMainWindow {
+                background: #f8f9fa;
+            }
+        """)
+        
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
+        
+        # Header with title and close button
+        header_layout = QHBoxLayout()
+        
+        # title_label = QLabel("📝 All Notes")
+        # title_label.setStyleSheet("""
+        #     QLabel {
+        #         font-size: 18px; 
+        #         font-weight: bold; 
+        #         color: #2c3e50;
+        #         background: transparent;
+        #     }
+        # """)
+        
+        # close_button = QPushButton("×")
+        # close_button.setMaximumSize(30, 30)
+        # close_button.setStyleSheet("""
+        #     QPushButton {
+        #         background: #e74c3c;
+        #         color: white;
+        #         border: none;
+        #         border-radius: 15px;
+        #         font-size: 16px;
+        #         font-weight: bold;
+        #     }
+        #     QPushButton:hover {
+        #         background: #c0392b;
+        #     }
+        # """)
+        # close_button.clicked.connect(self.close)
+        
+        # header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        # header_layout.addWidget(close_button)
+        
+        # Notes container
+        notes_container = QFrame()
+        notes_container.setFrameStyle(QFrame.Shape.Box)
+        notes_container.setStyleSheet("""
+            QFrame {
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                background: #ffffff;
+                padding: 10px;
+            }
+        """)
+        
+        container_layout = QVBoxLayout()
+        container_layout.setSpacing(10)
+        container_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Notes scroll area
+        self.notes_scroll = QScrollArea()
+        self.notes_scroll.setWidgetResizable(True)
+        self.notes_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.notes_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.notes_scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                background: #f1f3f4;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #bdc3c7;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #95a5a6;
+            }
+        """)
+        
+        self.notes_content = QWidget()
+        self.notes_content_layout = QVBoxLayout()
+        self.notes_content_layout.setSpacing(10)
+        self.notes_content_layout.setContentsMargins(10, 10, 10, 10)
+        self.notes_content.setLayout(self.notes_content_layout)
+        self.notes_scroll.setWidget(self.notes_content)
+        
+        container_layout.addWidget(self.notes_scroll)
+        notes_container.setLayout(container_layout)
+        
+        # Add to main layout
+        main_layout.addLayout(header_layout)
+        main_layout.addWidget(notes_container)
+        
+        central_widget.setLayout(main_layout)
+    
+    def setup_window_properties(self):
+        """
+        Configure window properties for the notes window.
+        """
+        self.setWindowTitle("SnapPad - All Notes")
+        self.setMinimumSize(600, 500)
+        self.resize(800, 600)
+        
+        # Center window on screen
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.geometry()
+        
+        x = (screen_geometry.width() - self.width()) // 2
+        y = (screen_geometry.height() - self.height()) // 2
+        self.move(x, y)
+        
+        # Set window flags
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowCloseButtonHint)
+    
+    def set_database_manager(self, database_manager):
+        """
+        Set the database manager for the notes window.
+        
+        Args:
+            database_manager: The database manager instance
+        """
+        self.database_manager = database_manager
+        self.refresh_notes()
+    
+    def refresh_notes(self):
+        """
+        Refresh the display of notes in the window.
+        """
+        if not self.database_manager:
+            return
+        
+        # Clear existing notes
+        for i in reversed(range(self.notes_content_layout.count())):
+            child = self.notes_content_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        # Add current notes
+        notes = self.database_manager.get_all_notes()
+        
+        if not notes:
+            no_notes_label = QLabel("No notes yet. Add your first note in the main dashboard!")
+            no_notes_label.setStyleSheet("""
+                QLabel {
+                    color: #7f8c8d; 
+                    font-style: italic; 
+                    font-size: 14px;
+                    padding: 20px;
+                    background: transparent;
+                    text-align: center;
+                }
+            """)
+            no_notes_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.notes_content_layout.addWidget(no_notes_label)
+        else:
+            for note in notes:
+                note_widget = EditableNoteWidget(note)
+                note_widget.note_updated.connect(self.update_note)
+                note_widget.note_deleted.connect(self.delete_note)
+                note_widget.note_copied.connect(self.copy_to_clipboard)
+                self.notes_content_layout.addWidget(note_widget)
+        
+        # Add stretch to push items to top
+        self.notes_content_layout.addStretch()
+    
+    def update_note(self, note_id: int, content: str):
+        """
+        Update a note in the database and refresh parent dashboard.
+        
+        Args:
+            note_id (int): The unique identifier of the note to update
+            content (str): The new content for the note
+        """
+        if self.database_manager:
+            self.database_manager.update_note(note_id, content)
+            # Refresh parent dashboard if available
+            if self.parent_dashboard:
+                self.parent_dashboard.refresh_notes()
+    
+    def delete_note(self, note_id: int):
+        """
+        Delete a note from the database and refresh displays.
+        
+        Args:
+            note_id (int): The unique identifier of the note to delete
+        """
+        if self.database_manager:
+            self.database_manager.delete_note(note_id)
+            self.refresh_notes()
+            # Refresh parent dashboard if available
+            if self.parent_dashboard:
+                self.parent_dashboard.refresh_notes()
+    
+    def copy_to_clipboard(self, text: str):
+        """
+        Copy text to clipboard using parent dashboard's clipboard manager.
+        
+        Args:
+            text (str): The text content to copy
+        """
+        if self.parent_dashboard and self.parent_dashboard.clipboard_manager:
+            self.parent_dashboard.clipboard_manager.copy_to_clipboard(text)
+
+
 class Dashboard(QMainWindow):
     """
     Main dashboard window for SnapPad.
@@ -454,6 +700,9 @@ class Dashboard(QMainWindow):
         # Initialize managers
         self.clipboard_manager = None
         self.database_manager = None
+        
+        # Initialize notes window reference
+        self.notes_window = None
         
         # Set up the user interface
         self.setup_ui()
@@ -624,6 +873,10 @@ class Dashboard(QMainWindow):
         notes_layout.setSpacing(6)  # Reduced from 10
         notes_layout.setContentsMargins(6, 6, 6, 6)
         
+        # Notes header with title and Open button
+        notes_header_layout = QHBoxLayout()
+        notes_header_layout.setSpacing(10)
+        
         notes_title = QLabel("📝 Notes")
         notes_title.setStyleSheet("""
             QLabel {
@@ -634,7 +887,32 @@ class Dashboard(QMainWindow):
                 background: transparent;
             }
         """)
-        notes_layout.addWidget(notes_title)
+        
+        # Open Notes button
+        self.open_notes_btn = QPushButton("Open")
+        self.open_notes_btn.setMaximumWidth(60)
+        self.open_notes_btn.setMaximumHeight(24)
+        self.open_notes_btn.clicked.connect(self.open_all_notes)
+        self.open_notes_btn.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #2980b9;
+            }
+        """)
+        
+        notes_header_layout.addWidget(notes_title)
+        notes_header_layout.addStretch()
+        notes_header_layout.addWidget(self.open_notes_btn)
+        
+        notes_layout.addLayout(notes_header_layout)
         
         # Add note input
         add_note_layout = QHBoxLayout()
@@ -885,6 +1163,10 @@ class Dashboard(QMainWindow):
         
         # Add stretch to push items to top
         self.notes_content_layout.addStretch()
+        
+        # Refresh notes window if it's open
+        if self.notes_window and not self.notes_window.isHidden():
+            self.notes_window.refresh_notes()
     
     def update_note(self, note_id: int, content: str):
         """
@@ -944,7 +1226,7 @@ class Dashboard(QMainWindow):
         print("Add note from selected text hotkey triggered!")
         if self.clipboard_manager:
             # Import keyboard module for simulating key presses
-            import keyboard
+            # import keyboard
             import time
             
             # Save current clipboard content
@@ -952,7 +1234,7 @@ class Dashboard(QMainWindow):
             print(f"Original clipboard saved: {original_clipboard[:30] if original_clipboard else 'None'}...")
             
             # Simulate Ctrl+C to copy selected text
-            keyboard.send('ctrl+c')
+            # keyboard.send('ctrl+c')
             time.sleep(0.1)  # Small delay to ensure copy completes
             
             # Get the newly copied text (selected text)
@@ -976,6 +1258,25 @@ class Dashboard(QMainWindow):
                     print(f"Falling back to clipboard content: {original_clipboard[:30]}...")
                     self.database_manager.add_note(original_clipboard)
                     self.refresh_notes()
+    
+    def open_all_notes(self):
+        """
+        Open a new window to display all notes in a larger, more readable format.
+        """
+        # If window already exists and is visible, just bring it to front
+        if self.notes_window and not self.notes_window.isHidden():
+            self.notes_window.raise_()
+            self.notes_window.activateWindow()
+            return
+        
+        # Create new window or show existing one
+        if not self.notes_window:
+            self.notes_window = NotesWindow(self)
+        
+        self.notes_window.set_database_manager(self.database_manager)
+        self.notes_window.show()
+        self.notes_window.raise_()
+        self.notes_window.activateWindow()
     
     def toggle_visibility_safe(self):
         """

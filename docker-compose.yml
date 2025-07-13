@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  snappad:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: snappad:latest
+    container_name: snappad
+    
+    # Environment variables for GUI support
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - XDG_RUNTIME_DIR=/tmp/runtime-root
+    
+    # Volume mounts for X11 forwarding and data persistence
+    volumes:
+      # X11 socket for GUI display (Linux/macOS)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # User's home directory X11 auth (if needed)
+      - ${HOME}/.Xauthority:/home/snappad/.Xauthority:ro
+      # Persistent data storage
+      - snappad_data:/app/data
+      # Clipboard access (Linux/macOS specific)
+      - /dev/shm:/dev/shm
+    
+    # Network configuration
+    network_mode: host
+    
+    # Device access for input devices
+    devices:
+      - /dev/input:/dev/input:ro
+    
+    # Capabilities for system integration
+    cap_add:
+      - SYS_ADMIN
+    
+    # Security options
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    
+    # IPC namespace sharing for X11
+    ipc: host
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "python", "-c", "import main; print('SnapPad ready')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  snappad_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data 
