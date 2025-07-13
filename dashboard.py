@@ -1,3 +1,31 @@
+"""
+Dashboard UI for SnapPad
+
+This module contains the main user interface for the SnapPad application using PyQt6.
+It provides a modern, always-on-top dashboard that displays clipboard history and
+manages persistent notes with an intuitive interface.
+
+Key Features:
+- Always-on-top window positioned on the right side of the screen
+- Real-time clipboard history display with clickable items
+- Notes management with inline editing capabilities
+- Modern UI with hover effects and smooth interactions
+- Thread-safe operations with signal-slot communication
+- Responsive design that adapts to different screen sizes
+- Integrated search and management tools
+
+UI Components:
+- ClickableLabel: Custom label widget for interactive clipboard items
+- EditableNoteWidget: Complex widget for displaying and editing notes
+- Dashboard: Main window class that orchestrates the entire interface
+
+The dashboard follows PyQt6 best practices with proper signal-slot communication
+and thread-safe operations for background task integration.
+
+Author: SnapPad Team
+Version: 1.0.0
+"""
+
 import sys
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QListWidget, QListWidgetItem, 
@@ -11,12 +39,40 @@ import config
 
 
 class ClickableLabel(QLabel):
-    """A clickable label that emits a signal when clicked."""
+    """
+    A clickable label widget that emits signals when clicked.
+    
+    This custom QLabel provides clickable functionality for clipboard history items.
+    When clicked, it emits a signal with the label's text content, allowing the
+    parent widget to handle the click event (typically to copy the text back
+    to the clipboard).
+    
+    Features:
+    - Hover effects with color changes
+    - Word wrapping for long text
+    - Custom styling with borders and padding
+    - Click detection and signal emission
+    - Pointer cursor on hover
+    """
+    
+    # Signal emitted when the label is clicked, passing the text content
     clicked = pyqtSignal(str)
     
     def __init__(self, text: str, *args, **kwargs):
+        """
+        Initialize the clickable label.
+        
+        Args:
+            text (str): The text content to display in the label.
+            *args: Additional positional arguments passed to QLabel.
+            **kwargs: Additional keyword arguments passed to QLabel.
+        """
         super().__init__(text, *args, **kwargs)
+        
+        # Enable word wrapping for long text
         self.setWordWrap(True)
+        
+        # Apply custom styling
         self.setStyleSheet("""
             QLabel {
                 background: #ffffff;
@@ -32,31 +88,88 @@ class ClickableLabel(QLabel):
                 border-color: #4a90e2;
             }
         """)
+        
+        # Set cursor to pointer to indicate clickability
         self.setCursor(Qt.CursorShape.PointingHandCursor)
     
     def mousePressEvent(self, event):
+        """
+        Handle mouse press events to detect clicks.
+        
+        This method is called when the user clicks on the label. It emits
+        the clicked signal with the label's text content if the left mouse
+        button was pressed.
+        
+        Args:
+            event: The mouse press event containing button and position information.
+        """
         if event.button() == Qt.MouseButton.LeftButton:
+            # Emit the clicked signal with the label's text
             self.clicked.emit(self.text())
+        
+        # Call the parent implementation to ensure proper event handling
         super().mousePressEvent(event)
 
 
 class EditableNoteWidget(QWidget):
-    """Widget for displaying and editing notes."""
-    note_updated = pyqtSignal(int, str)
-    note_deleted = pyqtSignal(int)
-    note_copied = pyqtSignal(str)
+    """
+    A complex widget for displaying and editing notes with inline editing capabilities.
+    
+    This widget provides a complete note management interface including:
+    - Display mode: Shows note content with action buttons
+    - Edit mode: Provides text editing with save/cancel options
+    - Action buttons: Edit, delete, copy, and save functionality
+    - Visual feedback: Hover effects and state transitions
+    - Signal communication: Emits signals for parent coordination
+    
+    The widget automatically switches between display and edit modes,
+    providing a seamless user experience for note management.
+    """
+    
+    # Signals for communicating with the parent widget
+    note_updated = pyqtSignal(int, str)  # Emitted when note content is updated
+    note_deleted = pyqtSignal(int)       # Emitted when note is deleted
+    note_copied = pyqtSignal(str)        # Emitted when note content is copied
     
     def __init__(self, note_data: Dict, parent=None):
+        """
+        Initialize the editable note widget.
+        
+        Args:
+            note_data (Dict): Dictionary containing note information with keys:
+                            - id: Unique note identifier
+                            - content: Note text content
+                            - created_at: Creation timestamp
+                            - updated_at: Last update timestamp
+            parent: Parent widget (optional)
+        """
         super().__init__(parent)
+        
+        # Store note data
         self.note_data = note_data
+        
+        # Track editing state
         self.is_editing = False
+        
+        # Set up the user interface
         self.setup_ui()
     
     def setup_ui(self):
+        """
+        Set up the user interface for the note widget.
+        
+        This method creates and configures all UI elements including:
+        - Main container with styling
+        - Display label for note content
+        - Text editor for editing mode
+        - Action buttons (Edit, Delete, Copy, Save, Cancel)
+        - Layout management and styling
+        """
+        # Main layout
         layout = QVBoxLayout()
         layout.setContentsMargins(4, 4, 4, 4)
         
-        # Create main container
+        # Create main container frame with border and styling
         self.container = QFrame()
         self.container.setFrameStyle(QFrame.Shape.Box)
         self.container.setStyleSheet("""
@@ -71,11 +184,12 @@ class EditableNoteWidget(QWidget):
             }
         """)
         
+        # Container layout with proper spacing
         container_layout = QVBoxLayout()
         container_layout.setSpacing(4)
         container_layout.setContentsMargins(6, 6, 6, 6)
         
-        # Note content (display mode)
+        # Note content display label (shown in display mode)
         self.display_label = QLabel(self.note_data['content'])
         self.display_label.setWordWrap(True)
         self.display_label.setStyleSheet("""
@@ -89,10 +203,10 @@ class EditableNoteWidget(QWidget):
             }
         """)
         
-        # Note content (edit mode)
+        # Note content text editor (shown in edit mode)
         self.edit_text = QTextEdit()
         self.edit_text.setPlainText(self.note_data['content'])
-        self.edit_text.setMaximumHeight(60)  # Reduced from 80
+        self.edit_text.setMaximumHeight(60)  # Compact height for better UI
         self.edit_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #d0d0d0;
@@ -106,13 +220,13 @@ class EditableNoteWidget(QWidget):
                 border-color: #4a90e2;
             }
         """)
-        self.edit_text.hide()
+        self.edit_text.hide()  # Hidden by default
         
-        # Button container
+        # Button container layout
         button_layout = QHBoxLayout()
         button_layout.setSpacing(4)
         
-        # Edit button
+        # Edit button - switches to edit mode
         self.edit_btn = QPushButton("Edit")
         self.edit_btn.setMaximumWidth(50)
         self.edit_btn.setMaximumHeight(24)
@@ -131,7 +245,7 @@ class EditableNoteWidget(QWidget):
             }
         """)
         
-        # Delete button
+        # Delete button - removes the note
         self.delete_btn = QPushButton("Del")
         self.delete_btn.setMaximumWidth(40)
         self.delete_btn.setMaximumHeight(24)
@@ -150,7 +264,7 @@ class EditableNoteWidget(QWidget):
             }
         """)
         
-        # Save button (hidden initially)
+        # Save button - saves changes (hidden in display mode)
         self.save_btn = QPushButton("Save")
         self.save_btn.setMaximumWidth(50)
         self.save_btn.setMaximumHeight(24)
@@ -168,9 +282,9 @@ class EditableNoteWidget(QWidget):
                 background: #229954;
             }
         """)
-        self.save_btn.hide()
+        self.save_btn.hide()  # Hidden by default
         
-        # Cancel button (hidden initially)
+        # Cancel button - cancels editing (hidden in display mode)
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setMaximumWidth(55)
         self.cancel_btn.setMaximumHeight(24)
@@ -188,9 +302,9 @@ class EditableNoteWidget(QWidget):
                 background: #7f8c8d;
             }
         """)
-        self.cancel_btn.hide()
+        self.cancel_btn.hide()  # Hidden by default
         
-        # Copy button (positioned on the right side)
+        # Copy button - copies note content to clipboard
         self.copy_btn = QPushButton("Copy")
         self.copy_btn.setMaximumWidth(50)
         self.copy_btn.setMaximumHeight(24)
@@ -216,17 +330,29 @@ class EditableNoteWidget(QWidget):
         button_layout.addStretch()
         button_layout.addWidget(self.copy_btn)
         
-        # Add to container
+        # Add widgets to container layout
         container_layout.addWidget(self.display_label)
         container_layout.addWidget(self.edit_text)
         container_layout.addLayout(button_layout)
         
+        # Set layout for the container frame
         self.container.setLayout(container_layout)
+        
+        # Add container to the main layout
         layout.addWidget(self.container)
+        
+        # Set the main layout for the widget
         self.setLayout(layout)
     
     def toggle_edit_mode(self):
-        """Toggle between display and edit mode."""
+        """
+        Toggle between display and edit mode for the note widget.
+        
+        This method handles the state transitions for the note widget,
+        showing the text editor and hiding the display label, and vice versa.
+        It also manages the visibility of action buttons (Edit, Delete, Save, Cancel)
+        based on the current mode.
+        """
         self.is_editing = not self.is_editing
         
         if self.is_editing:
@@ -246,7 +372,13 @@ class EditableNoteWidget(QWidget):
             self.cancel_btn.hide()
     
     def save_note(self):
-        """Save the edited note."""
+        """
+        Save the edited note content to the database.
+        
+        This method is called when the user clicks the "Save" button in edit mode.
+        It retrieves the new content from the text editor, updates the note data,
+        and emits a signal to notify the parent widget.
+        """
         new_content = self.edit_text.toPlainText().strip()
         if new_content:
             self.note_data['content'] = new_content
@@ -255,12 +387,23 @@ class EditableNoteWidget(QWidget):
             self.toggle_edit_mode()
     
     def cancel_edit(self):
-        """Cancel editing and revert changes."""
+        """
+        Cancel editing and revert changes for the note widget.
+        
+        This method is called when the user clicks the "Cancel" button in edit mode.
+        It restores the original content from the note data and reverts to display mode.
+        """
         self.edit_text.setPlainText(self.note_data['content'])
         self.toggle_edit_mode()
     
     def delete_note(self):
-        """Delete the note after confirmation."""
+        """
+        Delete the note from the database after confirmation.
+        
+        This method is called when the user clicks the "Delete" button.
+        It shows a confirmation dialog and, if confirmed, emits a signal to
+        notify the parent widget to delete the note from the database.
+        """
         reply = QMessageBox.question(
             self, 
             "Delete Note", 
@@ -272,22 +415,50 @@ class EditableNoteWidget(QWidget):
             self.note_deleted.emit(self.note_data['id'])
     
     def copy_note(self):
-        """Copy the note content to clipboard."""
+        """
+        Copy the current note content to the clipboard.
+        
+        This method is called when the user clicks the "Copy" button.
+        It emits a signal to notify the parent widget to copy the content
+        to the clipboard.
+        """
         self.note_copied.emit(self.note_data['content'])
 
 
 class Dashboard(QMainWindow):
-    """Main dashboard window for SnapPad."""
+    """
+    Main dashboard window for SnapPad.
+    
+    This class manages the overall dashboard interface, including:
+    - Clipboard history display
+    - Notes management
+    - User input for new notes
+    - Signal communication with managers (clipboard, database)
+    - Window positioning and visibility
+    - Thread-safe operations for hotkey triggers
+    """
     
     # Define signals for thread-safe communication
     toggle_visibility_signal = pyqtSignal()
     add_note_from_clipboard_signal = pyqtSignal()
     
     def __init__(self):
+        """
+        Initialize the dashboard window.
+        
+        This constructor sets up the main window, manages managers,
+        and connects signals to their respective slots.
+        """
         super().__init__()
+        
+        # Initialize managers
         self.clipboard_manager = None
         self.database_manager = None
+        
+        # Set up the user interface
         self.setup_ui()
+        
+        # Configure window properties
         self.setup_window_properties()
         
         # Connect signals to their respective slots
@@ -300,7 +471,18 @@ class Dashboard(QMainWindow):
         self.refresh_timer.start(config.REFRESH_INTERVAL)  # Refresh based on config
     
     def setup_ui(self):
-        """Setup the user interface."""
+        """
+        Set up the user interface for the dashboard.
+        
+        This method creates and configures all UI elements including:
+        - Main window layout
+        - Header with title and close button
+        - Splitter for resizable sections (Clipboard History, Notes)
+        - Clipboard history display area
+        - Notes input area and list
+        - Styling and layout management
+        """
+        # Central widget for the main window
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
@@ -545,7 +727,13 @@ class Dashboard(QMainWindow):
         central_widget.setLayout(main_layout)
     
     def setup_window_properties(self):
-        """Configure window properties."""
+        """
+        Configure window properties for the dashboard.
+        
+        This method sets the window title, size, position, and window flags.
+        It ensures the window is positioned on the right side of the screen
+        and always stays on top if configured.
+        """
         self.setWindowTitle("SnapPad")
         self.setFixedSize(config.DASHBOARD_WIDTH, config.DASHBOARD_HEIGHT)
         
@@ -567,7 +755,16 @@ class Dashboard(QMainWindow):
         self.hide()
     
     def set_managers(self, clipboard_manager, database_manager):
-        """Set the clipboard and database managers."""
+        """
+        Set the clipboard and database managers for the dashboard.
+        
+        This method assigns the provided managers to the dashboard's attributes
+        and triggers a refresh of the notes display.
+        
+        Args:
+            clipboard_manager: The manager responsible for clipboard operations.
+            database_manager: The manager responsible for managing notes.
+        """
         self.clipboard_manager = clipboard_manager
         self.database_manager = database_manager
         
@@ -575,7 +772,12 @@ class Dashboard(QMainWindow):
         self.refresh_notes()
     
     def refresh_clipboard_history(self):
-        """Refresh the clipboard history display."""
+        """
+        Refresh the display of clipboard history items.
+        
+        This method clears existing items and repopulates the clipboard history
+        display with the latest history from the clipboard manager.
+        """
         if not self.clipboard_manager:
             return
         
@@ -614,12 +816,28 @@ class Dashboard(QMainWindow):
         self.clipboard_content_layout.addStretch()
     
     def copy_to_clipboard(self, text: str):
-        """Copy text to clipboard."""
+        """
+        Copy text to the clipboard.
+        
+        This method is called when a clickable label in the clipboard history
+        is clicked. It uses the clipboard manager to copy the specified text
+        to the system clipboard.
+        
+        Args:
+            text (str): The text content to copy.
+        """
         if self.clipboard_manager:
             self.clipboard_manager.copy_to_clipboard(text)
     
     def add_note(self):
-        """Add a new note."""
+        """
+        Add a new note to the database.
+        
+        This method is called when the user presses Enter in the note input field
+        or clicks the "Add" button. It retrieves the content from the input field,
+        adds it to the database using the database manager, and refreshes the
+        notes display.
+        """
         content = self.note_input.text().strip()
         if content and self.database_manager:
             note_id = self.database_manager.add_note(content)
@@ -627,7 +845,12 @@ class Dashboard(QMainWindow):
             self.refresh_notes()
     
     def refresh_notes(self):
-        """Refresh the notes display."""
+        """
+        Refresh the display of notes in the dashboard.
+        
+        This method clears existing notes and repopulates the notes list
+        with the latest notes from the database manager.
+        """
         if not self.database_manager:
             return
         
@@ -664,18 +887,41 @@ class Dashboard(QMainWindow):
         self.notes_content_layout.addStretch()
     
     def update_note(self, note_id: int, content: str):
-        """Update a note in the database."""
+        """
+        Update a note in the database.
+        
+        This method is called when a note widget emits a 'note_updated' signal.
+        It uses the database manager to update the note content in the database.
+        
+        Args:
+            note_id (int): The unique identifier of the note to update.
+            content (str): The new content for the note.
+        """
         if self.database_manager:
             self.database_manager.update_note(note_id, content)
     
     def delete_note(self, note_id: int):
-        """Delete a note from the database."""
+        """
+        Delete a note from the database.
+        
+        This method is called when a note widget emits a 'note_deleted' signal.
+        It uses the database manager to delete the note from the database and
+        refreshes the notes display.
+        
+        Args:
+            note_id (int): The unique identifier of the note to delete.
+        """
         if self.database_manager:
             self.database_manager.delete_note(note_id)
             self.refresh_notes()
     
     def toggle_visibility(self):
-        """Toggle the visibility of the dashboard."""
+        """
+        Toggle the visibility of the dashboard.
+        
+        This method handles the visibility hotkey trigger. It prints a message
+        to the console and toggles the visibility of the dashboard.
+        """
         print("Toggle visibility hotkey triggered!")
         if self.isVisible():
             print("Dashboard is visible, hiding it")
@@ -686,7 +932,15 @@ class Dashboard(QMainWindow):
             self.activateWindow()  # Bring to front
     
     def add_note_from_clipboard(self):
-        """Add a note from the currently selected text."""
+        """
+        Add a note from the currently selected text.
+        
+        This method is called when the user triggers the "Add note from clipboard"
+        hotkey. It saves the current clipboard content, simulates a Ctrl+C key
+        press to copy the selected text, and then attempts to add it as a new
+        note to the database. It also handles restoring the original clipboard
+        content if the text was successfully added.
+        """
         print("Add note from selected text hotkey triggered!")
         if self.clipboard_manager:
             # Import keyboard module for simulating key presses
@@ -724,9 +978,19 @@ class Dashboard(QMainWindow):
                     self.refresh_notes()
     
     def toggle_visibility_safe(self):
-        """Thread-safe version of toggle_visibility."""
+        """
+        Thread-safe version of toggle_visibility.
+        
+        This method emits the toggle_visibility_signal to trigger the
+        visibility toggle from a different thread.
+        """
         self.toggle_visibility_signal.emit()
     
     def add_note_from_clipboard_safe(self):
-        """Thread-safe version of add_note_from_clipboard."""
+        """
+        Thread-safe version of add_note_from_clipboard.
+        
+        This method emits the add_note_from_clipboard_signal to trigger the
+        clipboard hotkey from a different thread.
+        """
         self.add_note_from_clipboard_signal.emit() 
