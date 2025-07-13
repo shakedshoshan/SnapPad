@@ -19,7 +19,21 @@ A lightweight, always-on-top Windows application for managing clipboard history 
 
 ## 🚀 Quick Start
 
-### Method 1: Automatic Setup (Recommended)
+### Method 1: Docker (Recommended for Cross-Platform)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/yourusername/snappad.git
+cd snappad
+
+# 2. Run with Docker (Linux/macOS)
+./run-docker.sh start
+
+# 2. Run with Docker (Windows)
+run-docker.bat start
+```
+
+### Method 2: Native Installation
 
 ```bash
 # 1. Clone the repository
@@ -30,12 +44,12 @@ cd snappad
 double-click install.bat
 ```
 
-### Method 2: Manual Installation
+### Method 3: Manual Installation
 
 ```bash
 # 1. Install Python 3.7+ from https://python.org
 # 2. Install dependencies
-pip install -r requirements.txt
+pip install -r requirements.txt  # Use requirements-docker.txt for Linux/macOS
 
 # 3. Run the application
 python main.py
@@ -183,6 +197,29 @@ pip install PyQt6 pyperclip keyboard pywin32
 4. Check for error messages in the console
 </details>
 
+## 🐳 Docker Support
+
+SnapPad now includes full Docker support for easy deployment and cross-platform compatibility!
+
+### Docker Features
+- **🖥️ Full GUI Support**: Complete PyQt6 interface with X11 forwarding
+- **📋 Clipboard Integration**: Cross-platform clipboard access
+- **⌨️ Global Hotkeys**: System-wide keyboard shortcuts
+- **💾 Persistent Data**: Your notes and settings are preserved
+- **🔄 Auto-restart**: Container restarts automatically on failure
+- **🛡️ Security**: Runs as non-root user with proper isolation
+
+### Quick Docker Start
+```bash
+# Linux/macOS
+./run-docker.sh start
+
+# Windows
+run-docker.bat start
+```
+
+📖 **Full Docker Documentation**: See [DOCKER.md](DOCKER.md) for complete setup instructions, troubleshooting, and advanced configuration.
+
 ## 📁 Project Structure
 
 ```
@@ -193,9 +230,15 @@ SnapPad/
 ├── 📋 clipboard_manager.py   # Clipboard monitoring & history
 ├── ⌨️ hotkey_manager.py      # Global hotkey management
 ├── 🖥️ dashboard.py           # PyQt6 user interface
-├── 📦 requirements.txt       # Python dependencies
-├── 🚀 install.bat            # Complete installation & launcher
-└── 📖 README.md             # This documentation
+├── 📦 requirements.txt       # Python dependencies (Windows/native)
+├── 📦 requirements-docker.txt # Docker dependencies (Linux/macOS)
+├── 🚀 install.bat            # Native installation & launcher
+├── 🐳 Dockerfile            # Docker image configuration
+├── 🐳 docker-compose.yml    # Docker Compose configuration
+├── 🐳 run-docker.sh         # Docker runner script (Linux/macOS)
+├── 🐳 run-docker.bat        # Docker runner script (Windows)
+├── 📖 README.md             # This documentation
+└── 📖 DOCKER.md             # Docker setup guide
 ```
 
 ## 🔧 Technical Stack
