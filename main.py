@@ -464,7 +464,7 @@ class SnapPadApp:
             signum (int): Signal number
             frame: Current stack frame
         
-        This ensures the application shuts down properly when receiving
+        This ensures the application shuts down properly when receiving 
         system signals like SIGINT (Ctrl+C) or SIGTERM.
         """
         print(f"Received signal {signum}, shutting down...")
