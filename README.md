@@ -71,7 +71,7 @@ graph TD
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/snappad.git
+git clone https://github.com/shakedshoshan/SnapPad.git
 cd snappad
 
 # 2. Run the installer (handles everything automatically)
@@ -121,13 +121,6 @@ python main.py
 - Edit existing notes with inline editing
 - Delete notes with confirmation
 - All notes persist between application sessions
-
-#### 🔧 System Tray
-Right-click the tray icon for:
-- Show/Hide Dashboard
-- Clear Clipboard History  
-- About Information
-- Exit Application
 
 ## ⚙️ Configuration
 
