@@ -11,7 +11,8 @@
 
 SnapPad is designed to solve the common problem of losing clipboard content and managing quick notes efficiently. It runs silently in the background, capturing your clipboard history and providing instant access to your notes through customizable global hotkeys. Perfect for developers, writers, and power users who frequently copy/paste content and need quick note-taking capabilities.
 
- <img width="251" height="685" alt="image" src="https://github.com/user-attachments/assets/d503ae3e-d847-436f-b227-44c40d60ce46" /> <img width="504" height="388" alt="image" src="https://github.com/user-attachments/assets/e9c7ece3-3a00-40eb-b6e3-066ff9628466" />
+ <img width="254" height="690" alt="image" src="https://github.com/user-attachments/assets/e86de797-f148-47f2-a9e8-9d0f4b6f9b0a" />
+ <img width="504" height="388" alt="image" src="https://github.com/user-attachments/assets/e9c7ece3-3a00-40eb-b6e3-066ff9628466" />
 ## ✨ Key Features
 
 - **🚀 Background Service**: Runs silently with minimal resource usage (~10MB RAM)
