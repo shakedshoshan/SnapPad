@@ -7,6 +7,11 @@
 
 > A lightweight, always-on-top Windows application for managing clipboard history and persistent notes with global hotkeys.
 
+
+ <img width="451" height="885" alt="image" src="https://github.com/user-attachments/assets/d503ae3e-d847-436f-b227-44c40d60ce46" /> <img width="1004" height="788" alt="image" src="https://github.com/user-attachments/assets/e9c7ece3-3a00-40eb-b6e3-066ff9628466" />
+
+
+
 ## 🎯 Purpose
 
 SnapPad is designed to solve the common problem of losing clipboard content and managing quick notes efficiently. It runs silently in the background, capturing your clipboard history and providing instant access to your notes through customizable global hotkeys. Perfect for developers, writers, and power users who frequently copy/paste content and need quick note-taking capabilities.
