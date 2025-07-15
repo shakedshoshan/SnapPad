@@ -22,8 +22,6 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 - **📝 Persistent Notes**: SQLite-backed notes that survive application restarts
 - **⌨️ Global Hotkeys**: System-wide shortcuts for instant access (`Ctrl+Alt+S`, `Ctrl+Alt+N`)
 - **🖥️ Always-on-Top Dashboard**: Modern UI positioned on screen edge for quick access
-- **🔧 System Tray Integration**: Minimizes to tray with right-click context menu
-- **⚙️ Fully Configurable**: Customize hotkeys, UI dimensions, and behavior
 
 ## 🏗️ Technical Stack
 
