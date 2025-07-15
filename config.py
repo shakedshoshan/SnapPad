@@ -57,7 +57,7 @@ HOTKEY_SAVE_NOTE = "ctrl+alt+n"
 DASHBOARD_WIDTH = 360
 
 # Height: Enough space for clipboard history and notes (400-1200 pixels)
-DASHBOARD_HEIGHT = 580
+DASHBOARD_HEIGHT = 680
 
 # Distance from the right edge of the screen in pixels
 # This positions the dashboard as a side panel

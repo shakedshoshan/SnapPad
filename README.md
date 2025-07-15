@@ -5,286 +5,254 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/en-us/windows)
 
-A lightweight, always-on-top Windows application for managing clipboard history and persistent notes with global hotkeys.
+> A lightweight, always-on-top Windows application for managing clipboard history and persistent notes with global hotkeys.
 
-## ✨ Features
+## 🎯 Purpose
 
-- **🚀 Background Service**: Runs silently with minimal resource usage
-- **⌨️ Global Hotkeys**: Customizable keyboard shortcuts for instant access
-- **📋 Clipboard History**: Automatically tracks and stores your last 10 copied items
-- **📝 Notes Management**: Persistent SQLite database for your personal notes
-- **🖥️ Side Dashboard**: Modern, always-on-top interface positioned on the right side
-- **🔧 System Tray**: Minimizes to system tray for easy access and management
-- **⚙️ Configurable**: Easy-to-modify configuration for all settings
+SnapPad is designed to solve the common problem of losing clipboard content and managing quick notes efficiently. It runs silently in the background, capturing your clipboard history and providing instant access to your notes through customizable global hotkeys. Perfect for developers, writers, and power users who frequently copy/paste content and need quick note-taking capabilities.
 
-## 🚀 Quick Start
+## ✨ Key Features
 
-### Method 1: Docker (Recommended for Cross-Platform)
+- **🚀 Background Service**: Runs silently with minimal resource usage (~10MB RAM)
+- **📋 Smart Clipboard History**: Automatically tracks last 10 unique copied items
+- **📝 Persistent Notes**: SQLite-backed notes that survive application restarts
+- **⌨️ Global Hotkeys**: System-wide shortcuts for instant access (`Ctrl+Alt+S`, `Ctrl+Alt+N`)
+- **🖥️ Always-on-Top Dashboard**: Modern UI positioned on screen edge for quick access
+- **🔧 System Tray Integration**: Minimizes to tray with right-click context menu
+- **⚙️ Fully Configurable**: Customize hotkeys, UI dimensions, and behavior
+
+## 🏗️ Technical Stack
+
+- **Core Language**: Python 3.7+
+- **GUI Framework**: PyQt6 (modern Qt6 bindings)
+- **Database**: SQLite (lightweight, file-based)
+- **Clipboard Management**: pyperclip (cross-platform clipboard access)
+- **Global Hotkeys**: keyboard library (system-wide key capture)
+- **Windows Integration**: pywin32 (system tray, Windows APIs)
+- **Platform**: Windows 10/11 (with Docker support for Linux/macOS)
+
+## 🔄 Application Flow
+
+```mermaid
+graph TD
+    A[SnapPad Startup] --> B[Initialize Database]
+    B --> C[Setup System Tray]
+    C --> D[Register Global Hotkeys]
+    D --> E[Start Clipboard Monitor]
+    E --> F[Background Service Running]
+    
+    F --> G{User Action}
+    G -->|Copy Text| H[Capture to History]
+    G -->|Ctrl+Alt+S| I[Toggle Dashboard]
+    G -->|Ctrl+Alt+N| J[Save as Note]
+    G -->|Tray Click| K[Show/Hide Dashboard]
+    
+    H --> L[Update UI Display]
+    I --> L
+    J --> M[Store in SQLite]
+    K --> L
+    
+    M --> L
+    L --> F
+```
+
+### How It Works
+
+1. **Startup**: Application initializes SQLite database and registers with Windows system tray
+2. **Monitoring**: Continuous background thread monitors clipboard changes every 500ms
+3. **Capture**: When new content is copied, it's added to history (duplicates removed)
+4. **Storage**: Notes are permanently stored in SQLite database at `%APPDATA%\SnapPad\snappad.db`
+5. **Access**: Global hotkeys provide instant access without switching applications
+6. **UI**: Modern PyQt6 dashboard displays on-demand, always stays on top
+
+## 📦 Installation & Setup
+
+### Option 1: Quick Install (Recommended)
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/yourusername/snappad.git
 cd snappad
 
-# 2. Run with Docker (Linux/macOS)
-./run-docker.sh start
-
-# 2. Run with Docker (Windows)
-run-docker.bat start
+# 2. Run the installer (handles everything automatically)
+install.bat
 ```
 
-### Method 2: Native Installation
+### Option 2: Manual Installation
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/yourusername/snappad.git
-cd snappad
+# 1. Ensure Python 3.7+ is installed
+python --version
 
-# 2. Run the installer
-double-click install.bat
-```
-
-### Method 3: Manual Installation
-
-```bash
-# 1. Install Python 3.7+ from https://python.org
 # 2. Install dependencies
-pip install -r requirements.txt  # Use requirements-docker.txt for Linux/macOS
+pip install -r requirements.txt
 
 # 3. Run the application
 python main.py
 ```
 
-## 🎮 Usage
+
+## 🚀 Usage
 
 ### Starting the Application
 
-- **Quick Start**: Double-click `install.bat` (handles installation and startup)
 - **Command Line**: `python main.py`
-- **System Tray**: Look for the SnapPad icon in your system tray
+- **Batch File**: Double-click `SnapPad.bat` for quick start
 
-### Default Hotkeys
+### Default Controls
 
-| Hotkey | Action |
-|--------|--------|
-| `Ctrl + Alt + S` | Toggle dashboard visibility |
-| `Ctrl + Alt + N` | Save current clipboard as note |
+| Action | Hotkey | Description |
+|--------|--------|-------------|
+| Toggle Dashboard | `Ctrl + Alt + S` | Show/hide the main interface |
+| Save Note | `Ctrl + Alt + N` | Save current clipboard as note |
+| Exit | `Ctrl + C` |
 
-### Dashboard Features
+
+### Features Overview
 
 #### 📋 Clipboard History
-- Automatically captures all copied text
+- Automatically captures all text copied to clipboard
+- Displays last 10 unique items (configurable)
 - Click any item to copy it back to clipboard
-- Shows your last 10 unique items
-- Removes duplicates automatically
+- Duplicates are automatically removed
 
-#### 📝 My Notes
-- Add notes directly in the dashboard
-- Edit existing notes with the "Edit" button
-- Delete notes with confirmation dialog
-- All notes are permanently saved to SQLite database
+#### 📝 Notes Management
+- Add new notes directly in the dashboard
+- Edit existing notes with inline editing
+- Delete notes with confirmation
+- All notes persist between application sessions
 
-### System Tray Options
-
+#### 🔧 System Tray
 Right-click the tray icon for:
-- **Show/Hide Dashboard**
-- **Clear Clipboard History**
-- **About Information**
-- **Exit Application**
-
-Double-click the tray icon to toggle dashboard visibility.
+- Show/Hide Dashboard
+- Clear Clipboard History  
+- About Information
+- Exit Application
 
 ## ⚙️ Configuration
 
-Customize your experience by editing `config.py`:
+Customize behavior by editing `config.py`:
 
 ```python
 # Clipboard Settings
-CLIPBOARD_HISTORY_SIZE = 10  # Number of items to remember
-CLIPBOARD_MONITOR_INTERVAL = 0.5  # Check interval in seconds
+CLIPBOARD_HISTORY_SIZE = 10          # Number of items to remember
+CLIPBOARD_MONITOR_INTERVAL = 0.5     # Check interval in seconds
 
-# Hotkey Settings
+# Hotkey Settings  
 HOTKEY_TOGGLE_DASHBOARD = "ctrl+alt+s"  # Show/hide dashboard
-HOTKEY_SAVE_NOTE = "ctrl+alt+n"  # Save clipboard as note
+HOTKEY_SAVE_NOTE = "ctrl+alt+n"         # Save clipboard as note
 
 # Dashboard Settings
-DASHBOARD_WIDTH = 360  # Window width
-DASHBOARD_HEIGHT = 580  # Window height
-DASHBOARD_ALWAYS_ON_TOP = True  # Keep on top of other windows
+DASHBOARD_WIDTH = 360                # Window width in pixels
+DASHBOARD_HEIGHT = 580               # Window height in pixels
+DASHBOARD_ALWAYS_ON_TOP = True       # Keep above other windows
 
-# UI Settings
-REFRESH_INTERVAL = 500  # UI refresh rate in milliseconds
+# Performance
+REFRESH_INTERVAL = 500               # UI refresh rate in milliseconds
 ```
-
-## 💾 Data Storage
-
-Your data is stored securely in:
-- **Location**: `%APPDATA%\SnapPad\snappad.db`
-- **Format**: SQLite database
-- **Notes**: Stored permanently with timestamps
-- **Clipboard History**: Stored in memory (resets on restart)
-
-## 🔧 Auto-Start Setup
-
-To run SnapPad automatically when Windows starts:
-
-1. Create a shortcut to `install.bat`
-2. Open Windows Startup folder:
-   - Press `Win + R`
-   - Type `shell:startup`
-   - Press Enter
-3. Copy the shortcut to this folder
-4. Restart your computer to test
-
-Note: The `install.bat` file will automatically detect if SnapPad is already installed and just start the application.
-
-## 🧪 Testing
-
-To test if SnapPad is working correctly:
-
-1. Run the application: `python main.py`
-2. Check the system tray for the SnapPad icon
-3. Test hotkeys: `Ctrl+Alt+S` (toggle dashboard), `Ctrl+Alt+N` (save note)
-4. Copy some text and verify it appears in the clipboard history
-5. Add a note and verify it's saved between sessions
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-<details>
-<summary><strong>🐍 "Python is not installed"</strong></summary>
-
-**Solution:**
-1. Download Python from [python.org](https://python.org)
-2. ✅ **Important**: Check "Add Python to PATH" during installation
-3. Restart your command prompt/terminal
-</details>
-
-<details>
-<summary><strong>📦 "Failed to install dependencies"</strong></summary>
-
-**Solution:**
-```bash
-# Update pip first
-pip install --upgrade pip
-
-# Install dependencies
-pip install -r requirements.txt
-
-# If still failing, try:
-pip install PyQt6 pyperclip keyboard pywin32
-```
-</details>
-
-<details>
-<summary><strong>⌨️ "Hotkeys not working"</strong></summary>
-
-**Solution:**
-1. Check if another application is using the same hotkeys
-2. Try different key combinations in `config.py`
-3. Run the application as administrator
-4. Verify hotkeys with: `python test_application.py`
-</details>
-
-<details>
-<summary><strong>🖥️ "Dashboard not showing"</strong></summary>
-
-**Solution:**
-1. Press `Ctrl + Alt + S` to toggle visibility
-2. Check system tray and double-click the icon
-3. Verify the application is running in Task Manager
-4. Check for error messages in the console
-</details>
-
-## 🐳 Docker Support
-
-SnapPad now includes full Docker support for easy deployment and cross-platform compatibility!
-
-### Docker Features
-- **🖥️ Full GUI Support**: Complete PyQt6 interface with X11 forwarding
-- **📋 Clipboard Integration**: Cross-platform clipboard access
-- **⌨️ Global Hotkeys**: System-wide keyboard shortcuts
-- **💾 Persistent Data**: Your notes and settings are preserved
-- **🔄 Auto-restart**: Container restarts automatically on failure
-- **🛡️ Security**: Runs as non-root user with proper isolation
-
-### Quick Docker Start
-```bash
-# Linux/macOS
-./run-docker.sh start
-
-# Windows
-run-docker.bat start
-```
-
-📖 **Full Docker Documentation**: See [DOCKER.md](DOCKER.md) for complete setup instructions, troubleshooting, and advanced configuration.
 
 ## 📁 Project Structure
 
 ```
 SnapPad/
-├── 📄 main.py                 # Application entry point
-├── ⚙️ config.py              # Configuration settings
-├── 🗄️ database.py            # SQLite database operations
-├── 📋 clipboard_manager.py   # Clipboard monitoring & history
-├── ⌨️ hotkey_manager.py      # Global hotkey management
-├── 🖥️ dashboard.py           # PyQt6 user interface
-├── 📦 requirements.txt       # Python dependencies (Windows/native)
-├── 📦 requirements-docker.txt # Docker dependencies (Linux/macOS)
-├── 🚀 install.bat            # Native installation & launcher
-├── 🐳 Dockerfile            # Docker image configuration
-├── 🐳 docker-compose.yml    # Docker Compose configuration
-├── 🐳 run-docker.sh         # Docker runner script (Linux/macOS)
-├── 🐳 run-docker.bat        # Docker runner script (Windows)
-├── 📖 README.md             # This documentation
-└── 📖 DOCKER.md             # Docker setup guide
+├── main.py                 # Application entry point & orchestration
+├── config.py              # Configuration settings & constants
+├── database.py            # SQLite operations & data models
+├── clipboard_manager.py   # Clipboard monitoring & history management
+├── hotkey_manager.py      # Global hotkey registration & handling
+├── dashboard.py           # PyQt6 user interface & window management
+├── requirements.txt       # Python dependencies
+├── install.bat            # Automated installer & launcher
+├── SnapPad.bat            # Quick launcher
+└── SnapPad_icon.png       # Application icon
 ```
 
-## 🔧 Technical Stack
+## 🛠️ Development Setup
 
-- **Language**: Python 3.7+
-- **GUI Framework**: PyQt6
-- **Database**: SQLite
-- **Clipboard**: pyperclip
-- **Hotkeys**: keyboard library
-- **Platform**: Windows 10/11
+```bash
+# 1. Clone and setup development environment
+git clone https://github.com/yourusername/snappad.git
+cd snappad
+
+# 2. Create virtual environment (recommended)
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/macOS
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run in development mode
+python main.py
+```
+
+## 🧪 Testing
+
+Basic functionality test:
+
+```bash
+# 1. Start the application
+python main.py
+
+# 2. Verify system tray icon appears
+# 3. Test hotkeys: Ctrl+Alt+S (dashboard), Ctrl+Alt+N (save note)
+# 4. Copy text and verify it appears in clipboard history
+# 5. Add a note and restart app to verify persistence
+```
+
+## 🔧 Auto-Start Setup
+
+To run SnapPad automatically on Windows startup:
+
+1. Create a shortcut to `SnapPad.bat`
+2. Open startup folder: `Win + R` → `shell:startup` → Enter
+3. Copy the shortcut to this folder
+4. Restart to test
+
+## 🐳 Docker Support
+
+SnapPad includes full Docker support for cross-platform compatibility:
+
+- **GUI Support**: Complete PyQt6 interface with X11 forwarding
+- **Clipboard Integration**: Cross-platform clipboard access
+- **Persistent Data**: Notes and settings preserved between runs
+- **Auto-restart**: Container restarts on failure
+
+See [Docker documentation](DOCKER.md) for detailed setup instructions.
 
 ## 🤝 Contributing
 
+Contributions are welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
+3. Make your changes with proper commit messages
+4. Add tests if applicable
+5. Submit a pull request with a clear description
 
-## 📝 License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🐛 Bug Reports & Feature Requests
+## 🐛 Issues & Support
 
-Found a bug or have a feature request? Please [open an issue](https://github.com/yourusername/snappad/issues) with:
-- **Bug Reports**: Steps to reproduce, expected vs actual behavior
-- **Feature Requests**: Detailed description of the proposed feature
+- **Bug Reports**: [Create an issue](https://github.com/yourusername/snappad/issues) with reproduction steps
+- **Feature Requests**: [Create an issue](https://github.com/yourusername/snappad/issues) with detailed description
+- **Questions**: Check existing issues or create a new one
 
-## 🎯 Future Enhancements
+## 🎯 Roadmap
 
 - [ ] Rich text notes support
-- [ ] Note categories and tags
-- [ ] Search functionality across notes
+- [ ] Note categories and tagging
+- [ ] Search functionality
 - [ ] Cloud synchronization
-- [ ] Custom themes and dark mode
-- [ ] File attachment support
+- [ ] Custom themes & dark mode
 - [ ] Multi-language support
-- [ ] Cross-platform compatibility
-
-## 📊 Screenshots
-
-> 🖼️ **Coming Soon**: Screenshots of the dashboard and system tray integration
+- [ ] File attachment support
 
 ---
 
 <div align="center">
-<strong>Made with ❤️ for productivity enthusiasts</strong>
+<strong>Made with ❤️ for productivity enthusiasts</strong><br>
+<sub>Star ⭐ this repo if you find it useful!</sub>
 </div> 
