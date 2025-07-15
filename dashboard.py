@@ -1226,7 +1226,7 @@ class Dashboard(QMainWindow):
         print("Add note from selected text hotkey triggered!")
         if self.clipboard_manager:
             # Import keyboard module for simulating key presses
-            # import keyboard
+            import keyboard
             import time
             
             # Save current clipboard content
@@ -1234,7 +1234,7 @@ class Dashboard(QMainWindow):
             print(f"Original clipboard saved: {original_clipboard[:30] if original_clipboard else 'None'}...")
             
             # Simulate Ctrl+C to copy selected text
-            # keyboard.send('ctrl+c')
+            keyboard.send('ctrl+c')
             time.sleep(0.1)  # Small delay to ensure copy completes
             
             # Get the newly copied text (selected text)
