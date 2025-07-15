@@ -31,7 +31,7 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 - **Clipboard Management**: pyperclip (cross-platform clipboard access)
 - **Global Hotkeys**: keyboard library (system-wide key capture)
 - **Windows Integration**: pywin32 (system tray, Windows APIs)
-- **Platform**: Windows 10/11 (with Docker support for Linux/macOS)
+- **Platform**: Windows 10/11 
 
 ## 🔄 Application Flow
 
