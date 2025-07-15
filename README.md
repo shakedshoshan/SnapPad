@@ -36,16 +36,14 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 ```mermaid
 graph TD
     A[SnapPad Startup] --> B[Initialize Database]
-    B --> C[Setup System Tray]
-    C --> D[Register Global Hotkeys]
-    D --> E[Start Clipboard Monitor]
-    E --> F[Background Service Running]
+    B--> D[Register Global Hotkeys]
+    C--> E[Start Clipboard Monitor]
+    D--> F[Background Service Running]
     
     F --> G{User Action}
     G -->|Copy Text| H[Capture to History]
     G -->|Ctrl+Alt+S| I[Toggle Dashboard]
     G -->|Ctrl+Alt+N| J[Save as Note]
-    G -->|Tray Click| K[Show/Hide Dashboard]
     
     H --> L[Update UI Display]
     I --> L
@@ -167,58 +165,7 @@ SnapPad/
 └── SnapPad_icon.png       # Application icon
 ```
 
-## 🛠️ Development Setup
 
-```bash
-# 1. Clone and setup development environment
-git clone https://github.com/yourusername/snappad.git
-cd snappad
-
-# 2. Create virtual environment (recommended)
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/macOS
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Run in development mode
-python main.py
-```
-
-## 🧪 Testing
-
-Basic functionality test:
-
-```bash
-# 1. Start the application
-python main.py
-
-# 2. Verify system tray icon appears
-# 3. Test hotkeys: Ctrl+Alt+S (dashboard), Ctrl+Alt+N (save note)
-# 4. Copy text and verify it appears in clipboard history
-# 5. Add a note and restart app to verify persistence
-```
-
-## 🔧 Auto-Start Setup
-
-To run SnapPad automatically on Windows startup:
-
-1. Create a shortcut to `SnapPad.bat`
-2. Open startup folder: `Win + R` → `shell:startup` → Enter
-3. Copy the shortcut to this folder
-4. Restart to test
-
-## 🐳 Docker Support
-
-SnapPad includes full Docker support for cross-platform compatibility:
-
-- **GUI Support**: Complete PyQt6 interface with X11 forwarding
-- **Clipboard Integration**: Cross-platform clipboard access
-- **Persistent Data**: Notes and settings preserved between runs
-- **Auto-restart**: Container restarts on failure
-
-See [Docker documentation](DOCKER.md) for detailed setup instructions.
 
 ## 🤝 Contributing
 
