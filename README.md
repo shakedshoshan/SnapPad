@@ -38,8 +38,8 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 ```mermaid
 graph TD
     A[SnapPad Startup] --> B[Initialize Database]
-    B--> D[Register Global Hotkeys]
-    C--> E[Start Clipboard Monitor]
+    B--> C[Register Global Hotkeys]
+    C--> D[Start Clipboard Monitor]
     D--> F[Background Service Running]
     
     F --> G{User Action}
