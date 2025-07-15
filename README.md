@@ -13,6 +13,8 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 
  <img width="254" height="690" alt="image" src="https://github.com/user-attachments/assets/e86de797-f148-47f2-a9e8-9d0f4b6f9b0a" />
  <img width="504" height="388" alt="image" src="https://github.com/user-attachments/assets/e9c7ece3-3a00-40eb-b6e3-066ff9628466" />
+
+ 
 ## ✨ Key Features
 
 - **🚀 Background Service**: Runs silently with minimal resource usage (~10MB RAM)
