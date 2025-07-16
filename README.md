@@ -2,7 +2,6 @@
 
 [![Python](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://www.python.org/downloads/)
 [![PyQt6](https://img.shields.io/badge/PyQt6-6.6%2B-green.svg)](https://pypi.org/project/PyQt6/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/en-us/windows)
 
 > A lightweight, always-on-top Windows application for managing clipboard history and persistent notes with global hotkeys.
@@ -13,6 +12,8 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 
  <img width="254" height="690" alt="image" src="https://github.com/user-attachments/assets/e86de797-f148-47f2-a9e8-9d0f4b6f9b0a" />
  <img width="504" height="388" alt="image" src="https://github.com/user-attachments/assets/e9c7ece3-3a00-40eb-b6e3-066ff9628466" />
+
+ 
 ## ✨ Key Features
 
 - **🚀 Background Service**: Runs silently with minimal resource usage (~10MB RAM)
@@ -20,8 +21,6 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 - **📝 Persistent Notes**: SQLite-backed notes that survive application restarts
 - **⌨️ Global Hotkeys**: System-wide shortcuts for instant access (`Ctrl+Alt+S`, `Ctrl+Alt+N`)
 - **🖥️ Always-on-Top Dashboard**: Modern UI positioned on screen edge for quick access
-- **🔧 System Tray Integration**: Minimizes to tray with right-click context menu
-- **⚙️ Fully Configurable**: Customize hotkeys, UI dimensions, and behavior
 
 ## 🏗️ Technical Stack
 
@@ -31,7 +30,7 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 - **Clipboard Management**: pyperclip (cross-platform clipboard access)
 - **Global Hotkeys**: keyboard library (system-wide key capture)
 - **Windows Integration**: pywin32 (system tray, Windows APIs)
-- **Platform**: Windows 10/11 (with Docker support for Linux/macOS)
+- **Platform**: Windows 10/11 
 
 ## 🔄 Application Flow
 
