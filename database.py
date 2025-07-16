@@ -14,7 +14,7 @@ Key Features:
 - Type hints for better code documentation
 
 Database Schema:
-- notes table: id (PRIMARY KEY), content (TEXT), created_at (TEXT), updated_at (TEXT)
+- notes table: id (PRIMARY KEY), title (TEXT), content (TEXT), priority (INTEGER DEFAULT 1), created_at (TEXT), updated_at (TEXT)
 
 Author: SnapPad Team
 Version: 1.0.0
@@ -51,11 +51,13 @@ class DatabaseManager:
         1. Determines the database file path
         2. Creates the application directory if needed
         3. Initializes the database with required tables
-        4. Ensures the database is ready for operations
+        4. Performs any necessary migrations
+        5. Ensures the database is ready for operations
         """
         self.db_path = self._get_db_path()
         self._ensure_db_directory()
         self._initialize_database()
+        self._migrate_database()
     
     def _get_db_path(self) -> str:
         """
@@ -102,18 +104,22 @@ class DatabaseManager:
         
         The notes table schema:
         - id: INTEGER PRIMARY KEY AUTOINCREMENT (unique identifier)
+        - title: TEXT (the note title)
         - content: TEXT NOT NULL (the note content)
+        - priority: INTEGER DEFAULT 1 (priority level: 1=normal, 2=high, 3=urgent)
         - created_at: TEXT DEFAULT CURRENT_TIMESTAMP (when created)
         - updated_at: TEXT DEFAULT CURRENT_TIMESTAMP (when last modified)
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # Create the notes table with proper schema
+            # Create the notes table with proper schema including title and priority
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS notes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT,
                     content TEXT NOT NULL,
+                    priority INTEGER DEFAULT 1,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
@@ -122,23 +128,82 @@ class DatabaseManager:
             # Commit the changes
             conn.commit()
     
-    def add_note(self, content: str) -> int:
+    def _migrate_database(self):
+        """
+        Migrate existing database to add title and priority columns if they don't exist.
+        
+        This method handles database schema migrations for existing installations
+        that might not have the title or priority columns. It checks if the columns exist
+        and adds them if necessary.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Check what columns exist
+            cursor.execute("PRAGMA table_info(notes)")
+            columns = [column[1] for column in cursor.fetchall()]
+            
+            migration_needed = False
+            
+            # Add title column if it doesn't exist
+            if 'title' not in columns:
+                print("Migrating database: Adding title column to notes table")
+                cursor.execute('ALTER TABLE notes ADD COLUMN title TEXT')
+                
+                # Update existing notes with default titles based on content
+                cursor.execute('''
+                    UPDATE notes 
+                    SET title = CASE 
+                        WHEN length(content) > 30 THEN substr(content, 1, 30) || '...'
+                        ELSE content
+                    END
+                    WHERE title IS NULL
+                ''')
+                migration_needed = True
+            
+            # Add priority column if it doesn't exist
+            if 'priority' not in columns:
+                print("Migrating database: Adding priority column to notes table")
+                cursor.execute('ALTER TABLE notes ADD COLUMN priority INTEGER DEFAULT 1')
+                
+                # Update existing notes with default priority
+                cursor.execute('''
+                    UPDATE notes 
+                    SET priority = 1
+                    WHERE priority IS NULL
+                ''')
+                migration_needed = True
+            
+            if migration_needed:
+                conn.commit()
+                print("Database migration completed successfully")
+    
+    def add_note(self, content: str, title: str = None, priority: int = 1) -> int:
         """
         Add a new note to the database.
         
-        This method creates a new note with the provided content and
-        automatically sets the creation and update timestamps.
+        This method creates a new note with the provided content, title, and priority,
+        automatically setting the creation and update timestamps.
         
         Args:
             content (str): The text content of the note
+            title (str, optional): The title of the note. If None, generates from content.
+            priority (int, optional): Priority level (1=normal, 2=high, 3=urgent). Defaults to 1.
             
         Returns:
             int: The ID of the newly created note
             
         Example:
-            note_id = db.add_note("Remember to buy groceries")
+            note_id = db.add_note("Remember to buy groceries", "Shopping List", 2)
             print(f"Note created with ID: {note_id}")
         """
+        # Generate title from content if not provided
+        if not title:
+            title = content[:30] + "..." if len(content) > 30 else content
+        
+        # Validate priority (ensure it's between 1 and 3)
+        priority = max(1, min(3, priority))
+        
         # Get the current timestamp in ISO format
         current_time = datetime.now().isoformat()
         
@@ -146,11 +211,11 @@ class DatabaseManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # Insert the new note with timestamps
+            # Insert the new note with title, priority, and timestamps
             cursor.execute('''
-                INSERT INTO notes (content, created_at, updated_at)
-                VALUES (?, ?, ?)
-            ''', (content, current_time, current_time))
+                INSERT INTO notes (title, content, priority, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (title, content, priority, current_time, current_time))
             
             # Commit the transaction
             conn.commit()
@@ -169,21 +234,23 @@ class DatabaseManager:
         Returns:
             List[Dict]: List of note dictionaries, each containing:
                 - id (int): Unique note identifier
+                - title (str): Note title
                 - content (str): Note text content
+                - priority (int): Priority level (1=normal, 2=high, 3=urgent)
                 - created_at (str): Creation timestamp
                 - updated_at (str): Last update timestamp
                 
         Example:
             notes = db.get_all_notes()
             for note in notes:
-                print(f"Note {note['id']}: {note['content']}")
+                print(f"Note {note['id']}: {note['title']} (Priority: {note['priority']}) - {note['content']}")
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # Query all notes ordered by most recent update first
+            # Query all notes ordered by most recent update first (keeping original sorting)
             cursor.execute('''
-                SELECT id, content, created_at, updated_at
+                SELECT id, title, content, priority, created_at, updated_at
                 FROM notes
                 ORDER BY updated_at DESC
             ''')
@@ -195,30 +262,34 @@ class DatabaseManager:
             return [
                 {
                     'id': row[0],
-                    'content': row[1],
-                    'created_at': row[2],
-                    'updated_at': row[3]
+                    'title': row[1] or "Untitled",  # Fallback for null titles
+                    'content': row[2],
+                    'priority': row[3] if row[3] is not None else 1,  # Fallback for null priorities
+                    'created_at': row[4],
+                    'updated_at': row[5]
                 }
                 for row in rows
             ]
     
-    def update_note(self, note_id: int, content: str) -> bool:
+    def update_note(self, note_id: int, content: str, title: str = None, priority: int = None) -> bool:
         """
-        Update an existing note's content.
+        Update an existing note's content, title, and/or priority.
         
-        This method updates the note content and automatically updates
+        This method updates the note content, title, and priority, automatically updating
         the modification timestamp. It returns a boolean indicating
         whether the update was successful.
         
         Args:
             note_id (int): The ID of the note to update
             content (str): The new content for the note
+            title (str, optional): The new title for the note. If None, keeps existing title.
+            priority (int, optional): The new priority level. If None, keeps existing priority.
             
         Returns:
             bool: True if the note was updated successfully, False otherwise
             
         Example:
-            success = db.update_note(1, "Updated note content")
+            success = db.update_note(1, "Updated note content", "New Title", 3)
             if success:
                 print("Note updated successfully")
             else:
@@ -227,15 +298,41 @@ class DatabaseManager:
         # Get the current timestamp for the update
         current_time = datetime.now().isoformat()
         
+        # Validate priority if provided
+        if priority is not None:
+            priority = max(1, min(3, priority))
+        
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # Update the note content and timestamp
-            cursor.execute('''
-                UPDATE notes
-                SET content = ?, updated_at = ?
-                WHERE id = ?
-            ''', (content, current_time, note_id))
+            if title is not None and priority is not None:
+                # Update content, title, priority and timestamp
+                cursor.execute('''
+                    UPDATE notes
+                    SET title = ?, content = ?, priority = ?, updated_at = ?
+                    WHERE id = ?
+                ''', (title, content, priority, current_time, note_id))
+            elif title is not None:
+                # Update content, title and timestamp
+                cursor.execute('''
+                    UPDATE notes
+                    SET title = ?, content = ?, updated_at = ?
+                    WHERE id = ?
+                ''', (title, content, current_time, note_id))
+            elif priority is not None:
+                # Update content, priority and timestamp
+                cursor.execute('''
+                    UPDATE notes
+                    SET content = ?, priority = ?, updated_at = ?
+                    WHERE id = ?
+                ''', (content, priority, current_time, note_id))
+            else:
+                # Update only content and timestamp
+                cursor.execute('''
+                    UPDATE notes
+                    SET content = ?, updated_at = ?
+                    WHERE id = ?
+                ''', (content, current_time, note_id))
             
             # Commit the changes
             conn.commit()
@@ -289,14 +386,16 @@ class DatabaseManager:
             Optional[Dict]: Note dictionary if found, None otherwise
             The dictionary contains:
                 - id (int): Unique note identifier
+                - title (str): Note title
                 - content (str): Note text content
+                - priority (int): Priority level (1=normal, 2=high, 3=urgent)
                 - created_at (str): Creation timestamp
                 - updated_at (str): Last update timestamp
                 
         Example:
             note = db.get_note_by_id(1)
             if note:
-                print(f"Found note: {note['content']}")
+                print(f"Found note: {note['title']} (Priority: {note['priority']}) - {note['content']}")
             else:
                 print("Note not found")
         """
@@ -305,7 +404,7 @@ class DatabaseManager:
             
             # Query for the specific note
             cursor.execute('''
-                SELECT id, content, created_at, updated_at
+                SELECT id, title, content, priority, created_at, updated_at
                 FROM notes
                 WHERE id = ?
             ''', (note_id,))
@@ -317,9 +416,11 @@ class DatabaseManager:
             if row:
                 return {
                     'id': row[0],
-                    'content': row[1],
-                    'created_at': row[2],
-                    'updated_at': row[3]
+                    'title': row[1] or "Untitled",  # Fallback for null titles
+                    'content': row[2],
+                    'priority': row[3] if row[3] is not None else 1,  # Fallback for null priorities
+                    'created_at': row[4],
+                    'updated_at': row[5]
                 }
             
             # Return None if note not found

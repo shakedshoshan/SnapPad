@@ -30,11 +30,12 @@ import sys
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QListWidget, QListWidgetItem, 
                              QLineEdit, QPushButton, QTextEdit, QMessageBox, 
-                             QSplitter, QFrame, QScrollArea)
+                             QSplitter, QFrame, QScrollArea, QComboBox)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QSize, QThread, pyqtSlot
 from PyQt6.QtGui import QFont, QIcon, QAction, QShortcut, QKeySequence
 from typing import List, Dict, Optional, Callable
 import threading
+from datetime import datetime
 import config
 
 
@@ -116,8 +117,8 @@ class EditableNoteWidget(QWidget):
     A complex widget for displaying and editing notes with inline editing capabilities.
     
     This widget provides a complete note management interface including:
-    - Display mode: Shows note content with action buttons
-    - Edit mode: Provides text editing with save/cancel options
+    - Display mode: Shows note title, content, and date info with action buttons
+    - Edit mode: Provides text editing for both title and content with save/cancel options
     - Action buttons: Edit, delete, copy, and save functionality
     - Visual feedback: Hover effects and state transitions
     - Signal communication: Emits signals for parent coordination
@@ -127,7 +128,7 @@ class EditableNoteWidget(QWidget):
     """
     
     # Signals for communicating with the parent widget
-    note_updated = pyqtSignal(int, str)  # Emitted when note content is updated
+    note_updated = pyqtSignal(int, str, str, int)  # Emitted when note is updated (id, content, title, priority)
     note_deleted = pyqtSignal(int)       # Emitted when note is deleted
     note_copied = pyqtSignal(str)        # Emitted when note content is copied
     
@@ -138,7 +139,9 @@ class EditableNoteWidget(QWidget):
         Args:
             note_data (Dict): Dictionary containing note information with keys:
                             - id: Unique note identifier
+                            - title: Note title
                             - content: Note text content
+                            - priority: Priority level (1=normal, 2=high, 3=urgent)
                             - created_at: Creation timestamp
                             - updated_at: Last update timestamp
             parent: Parent widget (optional)
@@ -160,8 +163,9 @@ class EditableNoteWidget(QWidget):
         
         This method creates and configures all UI elements including:
         - Main container with styling
-        - Display label for note content
-        - Text editor for editing mode
+        - Title display and editing
+        - Content display and editing
+        - Date information
         - Action buttons (Edit, Delete, Copy, Save, Cancel)
         - Layout management and styling
         """
@@ -189,10 +193,108 @@ class EditableNoteWidget(QWidget):
         container_layout.setSpacing(4)
         container_layout.setContentsMargins(6, 6, 6, 6)
         
+        # Header layout for title and priority
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(8)
+        
+        # Title display label (shown in display mode)
+        self.title_display_label = QLabel(self.note_data['title'])
+        self.title_display_label.setWordWrap(True)
+        self.title_display_label.setStyleSheet("""
+            QLabel {
+                border: none; 
+                background: transparent; 
+                padding: 2px;
+                color: #2c3e50;
+                font-size: 14px;
+                font-weight: bold;
+                line-height: 1.2;
+            }
+        """)
+        
+        # Priority display label (shown in display mode)
+        self.priority_display_label = QLabel(self._get_priority_text(self.note_data['priority']))
+        self.priority_display_label.setStyleSheet(f"""
+            QLabel {{
+                border: none; 
+                background: {self._get_priority_color(self.note_data['priority'])}; 
+                padding: 2px 6px;
+                color: white;
+                font-size: 10px;
+                font-weight: bold;
+                border-radius: 8px;
+                max-width: 50px;
+            }}
+        """)
+        
+        header_layout.addWidget(self.title_display_label)
+        header_layout.addStretch()
+        header_layout.addWidget(self.priority_display_label)
+        
+        # Edit mode header layout
+        edit_header_layout = QHBoxLayout()
+        edit_header_layout.setSpacing(8)
+        
+        # Title editor (shown in edit mode)
+        self.title_edit = QLineEdit()
+        self.title_edit.setText(self.note_data['title'])
+        self.title_edit.setPlaceholderText("Note title...")
+        self.title_edit.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+                padding: 4px;
+                font-size: 14px;
+                font-weight: bold;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QLineEdit:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        
+        # Priority editor (shown in edit mode)
+        self.priority_edit = QComboBox()
+        self.priority_edit.addItems(["1", "2", "3"])
+        self.priority_edit.setCurrentIndex(self.note_data['priority'] - 1)  # Convert to 0-based index
+        self.priority_edit.setMaximumWidth(80)
+        self.priority_edit.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+                padding: 4px;
+                font-size: 11px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QComboBox:focus {
+                border-color: #4a90e2;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border: none;
+            }
+        """)
+        
+        edit_header_layout.addWidget(self.title_edit)
+        edit_header_layout.addWidget(self.priority_edit)
+        
+        # Create containers for the headers
+        self.display_header_widget = QWidget()
+        self.display_header_widget.setLayout(header_layout)
+        
+        self.edit_header_widget = QWidget()
+        self.edit_header_widget.setLayout(edit_header_layout)
+        self.edit_header_widget.hide()  # Hidden by default
+        
         # Note content display label (shown in display mode)
-        self.display_label = QLabel(self.note_data['content'])
-        self.display_label.setWordWrap(True)
-        self.display_label.setStyleSheet("""
+        self.content_display_label = QLabel(self.note_data['content'])
+        self.content_display_label.setWordWrap(True)
+        self.content_display_label.setStyleSheet("""
             QLabel {
                 border: none; 
                 background: transparent; 
@@ -204,10 +306,10 @@ class EditableNoteWidget(QWidget):
         """)
         
         # Note content text editor (shown in edit mode)
-        self.edit_text = QTextEdit()
-        self.edit_text.setPlainText(self.note_data['content'])
-        self.edit_text.setMaximumHeight(60)  # Compact height for better UI
-        self.edit_text.setStyleSheet("""
+        self.content_edit_text = QTextEdit()
+        self.content_edit_text.setPlainText(self.note_data['content'])
+        self.content_edit_text.setMaximumHeight(60)  # Compact height for better UI
+        self.content_edit_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #d0d0d0;
                 border-radius: 4px;
@@ -220,7 +322,20 @@ class EditableNoteWidget(QWidget):
                 border-color: #4a90e2;
             }
         """)
-        self.edit_text.hide()  # Hidden by default
+        self.content_edit_text.hide()  # Hidden by default
+        
+        # Date information label
+        self.date_label = QLabel(self._format_date_info())
+        self.date_label.setStyleSheet("""
+            QLabel {
+                border: none; 
+                background: transparent; 
+                padding: 2px;
+                color: #7f8c8d;
+                font-size: 10px;
+                font-style: italic;
+            }
+        """)
         
         # Button container layout
         button_layout = QHBoxLayout()
@@ -331,8 +446,11 @@ class EditableNoteWidget(QWidget):
         button_layout.addWidget(self.copy_btn)
         
         # Add widgets to container layout
-        container_layout.addWidget(self.display_label)
-        container_layout.addWidget(self.edit_text)
+        container_layout.addWidget(self.display_header_widget)
+        container_layout.addWidget(self.edit_header_widget)
+        container_layout.addWidget(self.content_display_label)
+        container_layout.addWidget(self.content_edit_text)
+        container_layout.addWidget(self.date_label)
         container_layout.addLayout(button_layout)
         
         # Set layout for the container frame
@@ -344,28 +462,83 @@ class EditableNoteWidget(QWidget):
         # Set the main layout for the widget
         self.setLayout(layout)
     
+    def _format_date_info(self) -> str:
+        """
+        Format the date information for display.
+        
+        Returns:
+            str: Formatted date string showing creation and update times
+        """
+        try:
+            # Parse the ISO format timestamps
+            created_dt = datetime.fromisoformat(self.note_data['created_at'].replace('Z', '+00:00'))
+            updated_dt = datetime.fromisoformat(self.note_data['updated_at'].replace('Z', '+00:00'))
+            
+            # Format for display
+            created_str = created_dt.strftime("%m/%d/%Y %H:%M")
+            updated_str = updated_dt.strftime("%m/%d/%Y %H:%M")
+            
+            # Check if the note was updated after creation
+            if created_str == updated_str:
+                return f"Created: {created_str}"
+            else:
+                return f"Created: {created_str} | Updated: {updated_str}"
+                
+        except (ValueError, KeyError):
+            # Fallback for malformed dates
+            return "Date information unavailable"
+    
+    def _get_priority_text(self, priority: int) -> str:
+        """
+        Get the display text for a priority level.
+        
+        Args:
+            priority (int): Priority level (1-3)
+            
+        Returns:
+            str: Display text for the priority
+        """
+        return str(priority) if priority in [1, 2, 3] else "1"
+    
+    def _get_priority_color(self, priority: int) -> str:
+        """
+        Get the display color for a priority level.
+        
+        Args:
+            priority (int): Priority level (1-3)
+            
+        Returns:
+            str: CSS color code for the priority
+        """
+        color_map = {1: "#95a5a6", 2: "#f39c12", 3: "#e74c3c"}
+        return color_map.get(priority, "#95a5a6")
+    
     def toggle_edit_mode(self):
         """
         Toggle between display and edit mode for the note widget.
         
         This method handles the state transitions for the note widget,
-        showing the text editor and hiding the display label, and vice versa.
+        showing the editors and hiding the display headers, and vice versa.
         It also manages the visibility of action buttons (Edit, Delete, Save, Cancel)
         based on the current mode.
         """
         self.is_editing = not self.is_editing
         
         if self.is_editing:
-            self.display_label.hide()
-            self.edit_text.show()
+            self.display_header_widget.hide()
+            self.content_display_label.hide()
+            self.edit_header_widget.show()
+            self.content_edit_text.show()
             self.edit_btn.hide()
             self.delete_btn.hide()
             self.save_btn.show()
             self.cancel_btn.show()
-            self.edit_text.setFocus()
+            self.title_edit.setFocus()
         else:
-            self.display_label.show()
-            self.edit_text.hide()
+            self.display_header_widget.show()
+            self.content_display_label.show()
+            self.edit_header_widget.hide()
+            self.content_edit_text.hide()
             self.edit_btn.show()
             self.delete_btn.show()
             self.save_btn.hide()
@@ -373,17 +546,46 @@ class EditableNoteWidget(QWidget):
     
     def save_note(self):
         """
-        Save the edited note content to the database.
+        Save the edited note title, content, and priority to the database.
         
         This method is called when the user clicks the "Save" button in edit mode.
-        It retrieves the new content from the text editor, updates the note data,
+        It retrieves the new title, content, and priority from the editors, updates the note data,
         and emits a signal to notify the parent widget.
         """
-        new_content = self.edit_text.toPlainText().strip()
-        if new_content:
+        new_title = self.title_edit.text().strip()
+        new_content = self.content_edit_text.toPlainText().strip()
+        new_priority = self.priority_edit.currentIndex() + 1  # Convert from 0-based to 1-based
+        
+        # Ensure we have at least a title or content
+        if new_content or new_title:
+            # Use default values if either is empty
+            if not new_title:
+                new_title = new_content[:30] + "..." if len(new_content) > 30 else new_content
+            if not new_content:
+                new_content = new_title
+                
+            self.note_data['title'] = new_title
             self.note_data['content'] = new_content
-            self.display_label.setText(new_content)
-            self.note_updated.emit(self.note_data['id'], new_content)
+            self.note_data['priority'] = new_priority
+            
+            # Update display elements
+            self.title_display_label.setText(new_title)
+            self.content_display_label.setText(new_content)
+            self.priority_display_label.setText(self._get_priority_text(new_priority))
+            self.priority_display_label.setStyleSheet(f"""
+                QLabel {{
+                    border: none; 
+                    background: {self._get_priority_color(new_priority)}; 
+                    padding: 2px 6px;
+                    color: white;
+                    font-size: 10px;
+                    font-weight: bold;
+                    border-radius: 8px;
+                    max-width: 50px;
+                }}
+            """)
+            
+            self.note_updated.emit(self.note_data['id'], new_content, new_title, new_priority)
             self.toggle_edit_mode()
     
     def cancel_edit(self):
@@ -391,9 +593,11 @@ class EditableNoteWidget(QWidget):
         Cancel editing and revert changes for the note widget.
         
         This method is called when the user clicks the "Cancel" button in edit mode.
-        It restores the original content from the note data and reverts to display mode.
+        It restores the original title, content, and priority from the note data and reverts to display mode.
         """
-        self.edit_text.setPlainText(self.note_data['content'])
+        self.title_edit.setText(self.note_data['title'])
+        self.content_edit_text.setPlainText(self.note_data['content'])
+        self.priority_edit.setCurrentIndex(self.note_data['priority'] - 1)  # Convert to 0-based index
         self.toggle_edit_mode()
     
     def delete_note(self):
@@ -632,16 +836,18 @@ class NotesWindow(QMainWindow):
         # Add stretch to push items to top
         self.notes_content_layout.addStretch()
     
-    def update_note(self, note_id: int, content: str):
+    def update_note(self, note_id: int, content: str, title: str, priority: int):
         """
         Update a note in the database and refresh parent dashboard.
         
         Args:
             note_id (int): The unique identifier of the note to update
             content (str): The new content for the note
+            title (str): The new title for the note
+            priority (int): The new priority level for the note
         """
         if self.database_manager:
-            self.database_manager.update_note(note_id, content)
+            self.database_manager.update_note(note_id, content, title, priority)
             # Refresh parent dashboard if available
             if self.parent_dashboard:
                 self.parent_dashboard.refresh_notes()
@@ -914,12 +1120,68 @@ class Dashboard(QMainWindow):
         
         notes_layout.addLayout(notes_header_layout)
         
-        # Add note input
-        add_note_layout = QHBoxLayout()
-        add_note_layout.setSpacing(6)  # Reduced from 10
+        # Add note input section
+        add_note_layout = QVBoxLayout()
+        add_note_layout.setSpacing(4)
+        
+        # Title and priority input layout
+        title_priority_layout = QHBoxLayout()
+        title_priority_layout.setSpacing(6)
+        
+        # Title input
+        self.title_input = QLineEdit()
+        self.title_input.setPlaceholderText("Note title (optional)...")
+        self.title_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 13px;
+                font-weight: bold;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QLineEdit:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        self.title_input.returnPressed.connect(self.add_note)
+        
+        # Priority input
+        self.priority_input = QComboBox()
+        self.priority_input.addItems(["1", "2", "3"])
+        self.priority_input.setCurrentIndex(0)  # Default to 1
+        self.priority_input.setMaximumWidth(80)
+        self.priority_input.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 11px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QComboBox:focus {
+                border-color: #4a90e2;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border: none;
+            }
+        """)
+        
+        title_priority_layout.addWidget(self.title_input)
+        title_priority_layout.addWidget(self.priority_input)
+        
+        # Content input with add button layout
+        content_add_layout = QHBoxLayout()
+        content_add_layout.setSpacing(6)
         
         self.note_input = QLineEdit()
-        self.note_input.setPlaceholderText("Enter a new note...")
+        self.note_input.setPlaceholderText("Enter note content...")
         self.note_input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #d1d5db;
@@ -954,8 +1216,11 @@ class Dashboard(QMainWindow):
             }
         """)
         
-        add_note_layout.addWidget(self.note_input)
-        add_note_layout.addWidget(add_note_btn)
+        content_add_layout.addWidget(self.note_input)
+        content_add_layout.addWidget(add_note_btn)
+        
+        add_note_layout.addLayout(title_priority_layout)
+        add_note_layout.addLayout(content_add_layout)
         notes_layout.addLayout(add_note_layout)
         
         # Notes scroll area
@@ -1112,14 +1377,20 @@ class Dashboard(QMainWindow):
         Add a new note to the database.
         
         This method is called when the user presses Enter in the note input field
-        or clicks the "Add" button. It retrieves the content from the input field,
+        or clicks the "Add" button. It retrieves the title, content, and priority from the input fields,
         adds it to the database using the database manager, and refreshes the
         notes display.
         """
+        title = self.title_input.text().strip()
         content = self.note_input.text().strip()
+        priority = self.priority_input.currentIndex() + 1  # Convert from 0-based to 1-based
+        
+        # Must have at least content to create a note
         if content and self.database_manager:
-            note_id = self.database_manager.add_note(content)
+            note_id = self.database_manager.add_note(content, title if title else None, priority)
+            self.title_input.clear()
             self.note_input.clear()
+            self.priority_input.setCurrentIndex(0)  # Reset to 1
             self.refresh_notes()
     
     def refresh_notes(self):
@@ -1168,19 +1439,21 @@ class Dashboard(QMainWindow):
         if self.notes_window and not self.notes_window.isHidden():
             self.notes_window.refresh_notes()
     
-    def update_note(self, note_id: int, content: str):
+    def update_note(self, note_id: int, content: str, title: str, priority: int):
         """
         Update a note in the database.
         
         This method is called when a note widget emits a 'note_updated' signal.
-        It uses the database manager to update the note content in the database.
+        It uses the database manager to update the note content, title, and priority in the database.
         
         Args:
             note_id (int): The unique identifier of the note to update.
             content (str): The new content for the note.
+            title (str): The new title for the note.
+            priority (int): The new priority level for the note.
         """
         if self.database_manager:
-            self.database_manager.update_note(note_id, content)
+            self.database_manager.update_note(note_id, content, title, priority)
     
     def delete_note(self, note_id: int):
         """
@@ -1243,7 +1516,7 @@ class Dashboard(QMainWindow):
             # Check if we actually got new text and it's different from original
             if selected_text and selected_text != original_clipboard:
                 print(f"Adding note from selected text: {selected_text[:30]}...")
-                self.database_manager.add_note(selected_text)
+                self.database_manager.add_note(selected_text)  # No title for clipboard notes
                 self.refresh_notes()
                 
                 # Restore original clipboard content
@@ -1256,7 +1529,7 @@ class Dashboard(QMainWindow):
                 # If no text was selected, fall back to clipboard content
                 if original_clipboard:
                     print(f"Falling back to clipboard content: {original_clipboard[:30]}...")
-                    self.database_manager.add_note(original_clipboard)
+                    self.database_manager.add_note(original_clipboard)  # No title for clipboard notes
                     self.refresh_notes()
     
     def open_all_notes(self):
