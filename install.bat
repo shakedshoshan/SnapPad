@@ -1,6 +1,6 @@
 @echo off
-REM SnapPad - Complete Installation and Setup Script
-REM This script handles everything needed to install and run SnapPad
+REM SnapPad - Installation and Setup Script
+REM This script installs all dependencies and guides the user to use SnapPad.bat
 
 echo ========================================
 echo       SnapPad - Installation Script
@@ -8,7 +8,7 @@ echo ========================================
 echo.
 
 REM Check if Python is installed
-echo [1/4] Checking Python installation...
+echo [1/3] Checking Python installation...
 py --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo ERROR: Python is not installed or not in PATH
@@ -25,7 +25,7 @@ echo ✓ Python is installed successfully!
 echo.
 
 REM Update pip to latest version
-echo [2/4] Updating pip...
+echo [2/3] Updating pip...
 py -m pip install --upgrade pip --quiet
 if %errorlevel% neq 0 (
     echo WARNING: Could not update pip, but continuing...
@@ -34,8 +34,8 @@ echo ✓ pip updated successfully!
 echo.
 
 REM Install required packages
-echo [3/4] Installing required packages...
-echo Installing PyQt6, pyperclip, keyboard, and pywin32...
+echo [3/3] Installing required packages...
+echo Installing dependencies from requirements.txt...
 py -m pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo ERROR: Failed to install dependencies
@@ -50,17 +50,6 @@ if %errorlevel% neq 0 (
 echo ✓ All dependencies installed successfully!
 echo.
 
-REM Test the application
-echo [4/4] Testing application startup...
-py -c "import sys; import PyQt6, pyperclip, keyboard; print('✓ All modules loaded successfully!')"
-if %errorlevel% neq 0 (
-    echo ERROR: Application test failed
-    echo Some dependencies may not be installed correctly
-    pause
-    exit /b 1
-)
-
-echo.
 echo ========================================
 echo     Installation completed successfully!
 echo ========================================
@@ -68,9 +57,11 @@ echo.
 echo SnapPad is now ready to use!
 echo.
 echo To run the application:
-echo   • Double-click this file again, or
-echo   • Run: python main.py
-echo.
+echo   • Double-click SnapPad.bat
+
+echo Or run from the command line:
+echo   • SnapPad.bat
+
 echo Global Hotkeys (when running):
 echo   • Ctrl+Alt+S: Toggle dashboard
 echo   • Ctrl+Alt+N: Save clipboard as note
@@ -78,32 +69,7 @@ echo.
 echo The application will run in the background and
 echo appear in your system tray.
 echo.
-
-REM Check if this is a first-time installation or running again
-py -c "import os; exit(0 if os.path.exists('snappad.db') else 1)" >nul 2>&1
-if %errorlevel% neq 0 (
-    REM First time installation
-    set /p choice="Do you want to start SnapPad now? (y/n): "
-    if /i "%choice%"=="y" (
-        echo.
-        echo Starting SnapPad...
-        echo You can close this window once SnapPad is running.
-        echo Look for the SnapPad icon in your system tray!
-        echo.
-        start "SnapPad" py main.py
-    ) else (
-        echo.
-        echo You can start SnapPad later by running: python main.py
-    )
-) else (
-    REM Subsequent runs - just start the application
-    echo Starting SnapPad...
-    echo You can close this window once SnapPad is running.
-    echo Look for the SnapPad icon in your system tray!
-    echo.
-    start "SnapPad" py main.py
-)
-
+echo Thank you for installing SnapPad!
 echo.
-echo Thank you for using SnapPad!
-timeout /t 3 >nul 
+pause
+exit /b 0 
