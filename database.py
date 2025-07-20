@@ -8,6 +8,7 @@ error handling and data integrity.
 Key Features:
 - SQLite database management with automatic setup
 - CRUD operations for notes (Create, Read, Update, Delete)
+- Enhanced prompts management with automatic cleanup
 - Automatic timestamp management
 - Database path management in user's AppData folder
 - Transaction safety with context managers
@@ -15,6 +16,7 @@ Key Features:
 
 Database Schema:
 - notes table: id (PRIMARY KEY), title (TEXT), content (TEXT), priority (INTEGER DEFAULT 1), created_at (TEXT), updated_at (TEXT)
+- enhanced_prompts table: id (PRIMARY KEY), title (TEXT), content (TEXT), is_saved (BOOLEAN DEFAULT 0), created_at (TEXT), updated_at (TEXT)
 
 Author: SnapPad Team
 Version: 1.0.0
@@ -109,6 +111,14 @@ class DatabaseManager:
         - priority: INTEGER DEFAULT 1 (priority level: 1=normal, 2=high, 3=urgent)
         - created_at: TEXT DEFAULT CURRENT_TIMESTAMP (when created)
         - updated_at: TEXT DEFAULT CURRENT_TIMESTAMP (when last modified)
+        
+        The enhanced_prompts table schema:
+        - id: INTEGER PRIMARY KEY AUTOINCREMENT (unique identifier)
+        - title: TEXT (the prompt title)
+        - content: TEXT NOT NULL (the prompt content)
+        - is_saved: BOOLEAN DEFAULT 0 (whether the prompt is saved permanently)
+        - created_at: TEXT DEFAULT CURRENT_TIMESTAMP (when created)
+        - updated_at: TEXT DEFAULT CURRENT_TIMESTAMP (when last modified)
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -120,6 +130,18 @@ class DatabaseManager:
                     title TEXT,
                     content TEXT NOT NULL,
                     priority INTEGER DEFAULT 1,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Create the enhanced_prompts table for storing AI-enhanced prompts
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS enhanced_prompts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT,
+                    content TEXT NOT NULL,
+                    is_saved BOOLEAN DEFAULT 0,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
@@ -139,7 +161,7 @@ class DatabaseManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # Check what columns exist
+            # Check what columns exist in notes table
             cursor.execute("PRAGMA table_info(notes)")
             columns = [column[1] for column in cursor.fetchall()]
             
@@ -177,6 +199,370 @@ class DatabaseManager:
             if migration_needed:
                 conn.commit()
                 print("Database migration completed successfully")
+
+    # Enhanced Prompts Methods
+    
+    def add_enhanced_prompt(self, content: str, title: str = None) -> int:
+        """
+        Add a new enhanced prompt to the database.
+        
+        This method creates a new enhanced prompt and automatically manages
+        the limit of 10 unsaved prompts by removing the oldest ones.
+        
+        Args:
+            content (str): The enhanced prompt content
+            title (str, optional): The title of the prompt. If None, generates from content.
+            
+        Returns:
+            int: The ID of the newly created prompt
+            
+        Example:
+            prompt_id = db.add_enhanced_prompt("Enhanced version of user's prompt", "My Enhanced Prompt")
+            print(f"Enhanced prompt created with ID: {prompt_id}")
+        """
+        # Generate title from content if not provided
+        if not title:
+            title = content[:30] + "..." if len(content) > 30 else content
+        
+        # Get the current timestamp in ISO format
+        current_time = datetime.now().isoformat()
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Insert the new enhanced prompt
+            cursor.execute('''
+                INSERT INTO enhanced_prompts (title, content, is_saved, created_at, updated_at)
+                VALUES (?, ?, 0, ?, ?)
+            ''', (title, content, current_time, current_time))
+            
+            # Get the ID of the newly created prompt
+            prompt_id = cursor.lastrowid
+            
+            # Clean up old unsaved prompts (keep only the 10 most recent)
+            self._cleanup_old_prompts(cursor)
+            
+            # Commit the transaction
+            conn.commit()
+            
+            return prompt_id
+    
+    def _cleanup_old_prompts(self, cursor):
+        """
+        Remove old unsaved prompts to maintain the limit of 10.
+        
+        This method keeps only the 10 most recent unsaved prompts
+        and removes older ones to prevent database bloat.
+        
+        Args:
+            cursor: SQLite cursor for database operations
+        """
+        # Get all unsaved prompt IDs ordered by creation time (oldest first)
+        cursor.execute('''
+            SELECT id FROM enhanced_prompts 
+            WHERE is_saved = 0 
+            ORDER BY created_at ASC
+        ''')
+        
+        unsaved_prompts = cursor.fetchall()
+        
+        # If we have more than 10 unsaved prompts, remove the oldest ones
+        if len(unsaved_prompts) > 10:
+            # Get IDs of prompts to delete (all except the 10 most recent)
+            prompts_to_delete = unsaved_prompts[:-10]
+            delete_ids = [prompt[0] for prompt in prompts_to_delete]
+            
+            # Delete the old prompts
+            placeholders = ','.join(['?' for _ in delete_ids])
+            cursor.execute(f'DELETE FROM enhanced_prompts WHERE id IN ({placeholders})', delete_ids)
+    
+    def get_all_enhanced_prompts(self) -> List[Dict]:
+        """
+        Retrieve all enhanced prompts from the database.
+        
+        This method fetches all enhanced prompts and returns them as a list of dictionaries,
+        ordered by most recently updated first.
+        
+        Returns:
+            List[Dict]: List of enhanced prompt dictionaries, each containing:
+                - id (int): Unique prompt identifier
+                - title (str): Prompt title
+                - content (str): Prompt text content
+                - is_saved (bool): Whether the prompt is saved permanently
+                - created_at (str): Creation timestamp
+                - updated_at (str): Last update timestamp
+                
+        Example:
+            prompts = db.get_all_enhanced_prompts()
+            for prompt in prompts:
+                status = "Saved" if prompt['is_saved'] else "Temporary"
+                print(f"Prompt {prompt['id']}: {prompt['title']} ({status})")
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Query all enhanced prompts ordered by most recent update first
+            cursor.execute('''
+                SELECT id, title, content, is_saved, created_at, updated_at
+                FROM enhanced_prompts
+                ORDER BY updated_at DESC
+            ''')
+            
+            # Fetch all results
+            rows = cursor.fetchall()
+            
+            # Convert rows to dictionaries for easier access
+            return [
+                {
+                    'id': row[0],
+                    'title': row[1] or "Untitled",
+                    'content': row[2],
+                    'is_saved': bool(row[3]),
+                    'created_at': row[4],
+                    'updated_at': row[5]
+                }
+                for row in rows
+            ]
+    
+    def get_unsaved_enhanced_prompts(self) -> List[Dict]:
+        """
+        Retrieve only unsaved enhanced prompts from the database.
+        
+        This method fetches only the temporary enhanced prompts (not saved permanently),
+        ordered by most recently updated first.
+        
+        Returns:
+            List[Dict]: List of unsaved enhanced prompt dictionaries
+            
+        Example:
+            temp_prompts = db.get_unsaved_enhanced_prompts()
+            print(f"Found {len(temp_prompts)} temporary prompts")
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Query only unsaved enhanced prompts
+            cursor.execute('''
+                SELECT id, title, content, is_saved, created_at, updated_at
+                FROM enhanced_prompts
+                WHERE is_saved = 0
+                ORDER BY updated_at DESC
+            ''')
+            
+            # Fetch all results
+            rows = cursor.fetchall()
+            
+            # Convert rows to dictionaries for easier access
+            return [
+                {
+                    'id': row[0],
+                    'title': row[1] or "Untitled",
+                    'content': row[2],
+                    'is_saved': bool(row[3]),
+                    'created_at': row[4],
+                    'updated_at': row[5]
+                }
+                for row in rows
+            ]
+    
+    def update_enhanced_prompt(self, prompt_id: int, content: str = None, title: str = None, is_saved: bool = None) -> bool:
+        """
+        Update an existing enhanced prompt's content, title, and/or saved status.
+        
+        This method updates the prompt content, title, and saved status, automatically updating
+        the modification timestamp.
+        
+        Args:
+            prompt_id (int): The ID of the prompt to update
+            content (str, optional): The new content for the prompt. If None, keeps existing content.
+            title (str, optional): The new title for the prompt. If None, keeps existing title.
+            is_saved (bool, optional): The new saved status. If None, keeps existing status.
+            
+        Returns:
+            bool: True if the prompt was updated successfully, False otherwise
+            
+        Example:
+            success = db.update_enhanced_prompt(1, title="New Title", is_saved=True)
+            if success:
+                print("Enhanced prompt updated successfully")
+            else:
+                print("Enhanced prompt not found or update failed")
+        """
+        # Get the current timestamp for the update
+        current_time = datetime.now().isoformat()
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Build the update query dynamically based on provided parameters
+            update_parts = []
+            params = []
+            
+            if title is not None:
+                update_parts.append('title = ?')
+                params.append(title)
+            
+            if content is not None:
+                update_parts.append('content = ?')
+                params.append(content)
+            
+            if is_saved is not None:
+                update_parts.append('is_saved = ?')
+                params.append(1 if is_saved else 0)
+            
+            # Always update the timestamp
+            update_parts.append('updated_at = ?')
+            params.append(current_time)
+            
+            # Add the prompt_id for the WHERE clause
+            params.append(prompt_id)
+            
+            # Execute the update
+            query = f'''
+                UPDATE enhanced_prompts
+                SET {', '.join(update_parts)}
+                WHERE id = ?
+            '''
+            
+            cursor.execute(query, params)
+            
+            # Commit the changes
+            conn.commit()
+            
+            # Return True if at least one row was affected
+            return cursor.rowcount > 0
+    
+    def delete_enhanced_prompt(self, prompt_id: int) -> bool:
+        """
+        Delete an enhanced prompt from the database.
+        
+        This method permanently removes an enhanced prompt from the database.
+        It returns a boolean indicating whether the deletion was successful.
+        
+        Args:
+            prompt_id (int): The ID of the prompt to delete
+            
+        Returns:
+            bool: True if the prompt was deleted successfully, False otherwise
+            
+        Example:
+            success = db.delete_enhanced_prompt(1)
+            if success:
+                print("Enhanced prompt deleted successfully")
+            else:
+                print("Enhanced prompt not found or deletion failed")
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Delete the prompt by ID
+            cursor.execute('DELETE FROM enhanced_prompts WHERE id = ?', (prompt_id,))
+            
+            # Commit the changes
+            conn.commit()
+            
+            # Return True if at least one row was affected
+            return cursor.rowcount > 0
+    
+    def get_enhanced_prompt_by_id(self, prompt_id: int) -> Optional[Dict]:
+        """
+        Retrieve a specific enhanced prompt by its ID.
+        
+        This method fetches a single enhanced prompt by its unique identifier.
+        It returns None if the prompt doesn't exist.
+        
+        Args:
+            prompt_id (int): The ID of the prompt to retrieve
+            
+        Returns:
+            Optional[Dict]: Enhanced prompt dictionary if found, None otherwise
+            The dictionary contains:
+                - id (int): Unique prompt identifier
+                - title (str): Prompt title
+                - content (str): Prompt text content
+                - is_saved (bool): Whether the prompt is saved permanently
+                - created_at (str): Creation timestamp
+                - updated_at (str): Last update timestamp
+                
+        Example:
+            prompt = db.get_enhanced_prompt_by_id(1)
+            if prompt:
+                print(f"Found prompt: {prompt['title']} (Saved: {prompt['is_saved']})")
+            else:
+                print("Enhanced prompt not found")
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Query for the specific enhanced prompt
+            cursor.execute('''
+                SELECT id, title, content, is_saved, created_at, updated_at
+                FROM enhanced_prompts
+                WHERE id = ?
+            ''', (prompt_id,))
+            
+            # Fetch the result
+            row = cursor.fetchone()
+            
+            # Return the prompt as a dictionary if found
+            if row:
+                return {
+                    'id': row[0],
+                    'title': row[1] or "Untitled",
+                    'content': row[2],
+                    'is_saved': bool(row[3]),
+                    'created_at': row[4],
+                    'updated_at': row[5]
+                }
+            
+            # Return None if prompt not found
+            return None
+    
+    def mark_enhanced_prompt_as_saved(self, prompt_id: int) -> bool:
+        """
+        Mark an enhanced prompt as saved to prevent automatic cleanup.
+        
+        This method sets the is_saved flag to True for a specific prompt,
+        which will prevent it from being automatically removed during cleanup.
+        
+        Args:
+            prompt_id (int): The ID of the prompt to mark as saved
+            
+        Returns:
+            bool: True if the prompt was marked as saved successfully, False otherwise
+            
+        Example:
+            success = db.mark_enhanced_prompt_as_saved(1)
+            if success:
+                print("Enhanced prompt marked as saved")
+            else:
+                print("Enhanced prompt not found")
+        """
+        return self.update_enhanced_prompt(prompt_id, is_saved=True)
+    
+    def mark_enhanced_prompt_as_unsaved(self, prompt_id: int) -> bool:
+        """
+        Mark an enhanced prompt as unsaved (temporary).
+        
+        This method sets the is_saved flag to False for a specific prompt,
+        which will make it eligible for automatic cleanup if it becomes one of the oldest.
+        
+        Args:
+            prompt_id (int): The ID of the prompt to mark as unsaved
+            
+        Returns:
+            bool: True if the prompt was marked as unsaved successfully, False otherwise
+            
+        Example:
+            success = db.mark_enhanced_prompt_as_unsaved(1)
+            if success:
+                print("Enhanced prompt marked as temporary")
+            else:
+                print("Enhanced prompt not found")
+        """
+        return self.update_enhanced_prompt(prompt_id, is_saved=False)
+
+    # Original Notes Methods (unchanged)
     
     def add_note(self, content: str, title: str = None, priority: int = 1) -> int:
         """

@@ -158,13 +158,17 @@ class OpenAIWorker(QThread):
         """
         Run the enhancement in the background thread.
         """
+        print(f"OpenAI worker starting with prompt: {self.prompt[:50]}...")
         try:
             enhanced_prompt = self.openai_manager.enhance_prompt(self.prompt)
             if enhanced_prompt:
+                print(f"Enhancement successful, emitting signal with: {enhanced_prompt[:50]}...")
                 self.enhancement_complete.emit(enhanced_prompt)
             else:
+                print("Enhancement failed - no result returned")
                 self.enhancement_failed.emit("Failed to enhance prompt")
         except Exception as e:
+            print(f"Enhancement exception: {e}")
             self.enhancement_failed.emit(str(e))
 
 
@@ -2679,10 +2683,11 @@ class Dashboard(QMainWindow):
     
     def enhance_prompt_from_clipboard(self):
         """
-        Enhance prompt from clipboard content.
+        Enhance prompt from clipboard content and replace selected text.
         
         This method is called when the user triggers the "Enhance prompt from clipboard"
-        hotkey. It gets the current clipboard content and enhances it using OpenAI.
+        hotkey. It gets the currently selected text, enhances it using OpenAI, and
+        automatically replaces the selected text with the enhanced version.
         """
         print("Enhance prompt from clipboard hotkey triggered!")
         
@@ -2696,22 +2701,226 @@ class Dashboard(QMainWindow):
                               "Clipboard manager not available.")
             return
         
-        # Get current clipboard content
-        clipboard_content = self.clipboard_manager.get_current_clipboard()
+        # Import keyboard module for simulating key presses
+        import keyboard
+        import time
         
-        if not clipboard_content or not clipboard_content.strip():
-            QMessageBox.warning(self, "No Content", 
-                              "No text found in clipboard to enhance.")
-            return
+        # Save current clipboard content
+        original_clipboard = self.clipboard_manager.get_current_clipboard()
+        print(f"Original clipboard saved: {original_clipboard[:30] if original_clipboard else 'None'}...")
         
-        # Show the dashboard if it's hidden
-        if not self.isVisible():
-            self.show()
-            self.activateWindow()
+        # Simulate Ctrl+C to copy selected text
+        keyboard.send('ctrl+c')
+        time.sleep(0.1)  # Small delay to ensure copy completes
         
-        # Set the clipboard content in the prompt input field
-        if hasattr(self, 'prompt_input'):
-            self.prompt_input.setPlainText(clipboard_content)
+        # Get the newly copied text (selected text)
+        selected_text = self.clipboard_manager.get_current_clipboard()
         
-        # Start the enhancement process
-        self.enhance_prompt() 
+        # Check if we actually got new text and it's different from original
+        if not selected_text or selected_text == original_clipboard:
+            print("No text selected or same as clipboard - no enhancement")
+            # If no text was selected, fall back to clipboard content
+            if original_clipboard:
+                print(f"Falling back to clipboard content: {original_clipboard[:30]}...")
+                selected_text = original_clipboard
+            else:
+                QMessageBox.warning(self, "No Content", 
+                                  "No text selected or found in clipboard to enhance.")
+                return
+        
+        # Show a simple loading message instead of the dashboard
+        self.show_enhancement_loading_message()
+        
+        # Create and start worker thread for enhancement
+        self.openai_worker = OpenAIWorker(self.openai_manager, selected_text)
+        
+        # Store the original clipboard for use in callbacks
+        self.current_enhancement_original_clipboard = original_clipboard
+        
+        # Connect signals with proper error handling
+        self.openai_worker.enhancement_complete.connect(self.on_enhancement_complete_with_replacement)
+        self.openai_worker.enhancement_failed.connect(self.on_enhancement_failed_silent)
+        self.openai_worker.finished.connect(self.on_worker_finished_silent)
+        
+        print("Starting OpenAI worker thread...")
+        self.openai_worker.start()
+    
+    def show_enhancement_loading_message(self):
+        """
+        Show a simple loading message for text enhancement.
+        """
+        print("Showing enhancement loading message...")
+        
+        # Create a simple message box to show processing
+        from PyQt6.QtWidgets import QMessageBox
+        
+        # Create a custom message box with loading text
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Enhancing Text")
+        msg_box.setText("Enhancing selected text...\n\n⠋ Processing...")
+        msg_box.setStandardButtons(QMessageBox.StandardButton.NoButton)
+        msg_box.setModal(False)  # Non-modal so it doesn't block
+        msg_box.setWindowFlags(
+            msg_box.windowFlags() | 
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
+        )
+        
+        # Position the message box in the center of the screen
+        screen = QApplication.primaryScreen().geometry()
+        msg_box.move(
+            screen.center().x() - msg_box.width() // 2,
+            screen.center().y() - msg_box.height() // 2
+        )
+        
+        # Store reference to close later
+        self.enhancement_loading_box = msg_box
+        msg_box.show()
+        print("Loading message box shown")
+        
+        # Start a timer to animate the loading dots
+        self.loading_animation_timer = QTimer()
+        self.loading_animation_timer.timeout.connect(self.update_loading_animation)
+        self.loading_animation_timer.setInterval(100)
+        self.loading_animation_timer.start()
+        
+        # Add a safety timer to close the message box after a maximum time (30 seconds)
+        self.safety_timer = QTimer()
+        self.safety_timer.timeout.connect(self.close_enhancement_loading_message)
+        self.safety_timer.setInterval(30000)  # 30 seconds
+        self.safety_timer.start()
+    
+    def update_loading_animation(self):
+        """
+        Update the loading animation dots.
+        """
+        if hasattr(self, 'enhancement_loading_box') and self.enhancement_loading_box:
+            dots = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            if not hasattr(self, 'current_loading_dot'):
+                self.current_loading_dot = 0
+            
+            self.current_loading_dot = (self.current_loading_dot + 1) % len(dots)
+            try:
+                self.enhancement_loading_box.setText(f"Enhancing selected text...\n\n{dots[self.current_loading_dot]} Processing...")
+            except Exception as e:
+                print(f"Error updating loading animation: {e}")
+                # If we can't update the text, the message box might be gone
+                self.close_enhancement_loading_message()
+    
+    def on_enhancement_complete_with_replacement(self, enhanced_text):
+        """
+        Handle successful prompt enhancement with text replacement.
+        
+        Args:
+            enhanced_text (str): The enhanced text from OpenAI
+        """
+        print(f"Enhancement completed! Enhanced text: {enhanced_text[:50]}...")
+        
+        # Get the original clipboard from stored reference
+        original_clipboard = getattr(self, 'current_enhancement_original_clipboard', None)
+        
+        # Close the loading message
+        self.close_enhancement_loading_message()
+        
+        # Copy the enhanced text to clipboard
+        self.clipboard_manager.copy_to_clipboard(enhanced_text)
+        
+        # Simulate Ctrl+V to paste the enhanced text (replacing selected text)
+        import keyboard
+        import time
+        
+        time.sleep(0.1)  # Small delay
+        keyboard.send('ctrl+v')
+        
+        # Restore original clipboard content
+        if original_clipboard:
+            time.sleep(0.1)  # Small delay
+            self.clipboard_manager.copy_to_clipboard(original_clipboard)
+            print("Original clipboard content restored")
+        
+        # Clean up the stored reference
+        if hasattr(self, 'current_enhancement_original_clipboard'):
+            delattr(self, 'current_enhancement_original_clipboard')
+        
+        print(f"Enhanced text replaced: {enhanced_text[:50]}...")
+    
+    def on_enhancement_failed_silent(self, error_message):
+        """
+        Handle failed prompt enhancement silently.
+        
+        Args:
+            error_message (str): The error message
+        """
+        print(f"Enhancement failed: {error_message}")
+        
+        # Close the loading message
+        self.close_enhancement_loading_message()
+        
+        # Show error message
+        QMessageBox.warning(self, "Enhancement Failed", 
+                          f"Failed to enhance the text: {error_message}")
+    
+    def on_worker_finished_silent(self):
+        """
+        Handle worker thread completion silently.
+        """
+        print("Worker thread finished")
+        
+        # Clean up worker thread
+        if hasattr(self, 'openai_worker') and self.openai_worker:
+            self.openai_worker.deleteLater()
+            self.openai_worker = None
+            print("Worker thread cleaned up")
+    
+    def close_enhancement_loading_message(self):
+        """
+        Close the enhancement loading message.
+        """
+        print("Closing enhancement loading message...")
+        
+        # Stop the animation timer first
+        if hasattr(self, 'loading_animation_timer') and self.loading_animation_timer:
+            self.loading_animation_timer.stop()
+            self.loading_animation_timer = None
+            print("Animation timer stopped")
+        
+        # Close the message box
+        if hasattr(self, 'enhancement_loading_box') and self.enhancement_loading_box:
+            try:
+                # Force hide first
+                self.enhancement_loading_box.hide()
+                # Then close
+                self.enhancement_loading_box.close()
+                # Schedule for deletion
+                self.enhancement_loading_box.deleteLater()
+                self.enhancement_loading_box = None
+                print("Loading message box closed")
+            except Exception as e:
+                print(f"Error closing loading message box: {e}")
+                # Try alternative approach
+                try:
+                    self.enhancement_loading_box.setVisible(False)
+                    self.enhancement_loading_box = None
+                    print("Loading message box hidden as fallback")
+                except Exception as e2:
+                    print(f"Fallback closing also failed: {e2}")
+        
+        # Stop the safety timer
+        if hasattr(self, 'safety_timer') and self.safety_timer:
+            self.safety_timer.stop()
+            self.safety_timer = None
+            print("Safety timer stopped")
+        
+        # Force cleanup of any remaining references
+        if hasattr(self, 'current_loading_dot'):
+            delattr(self, 'current_loading_dot')
+        
+        print("Enhancement loading message cleanup completed")
+    
+    def force_close_loading_message(self):
+        """
+        Force close the loading message if it's stuck.
+        This can be called manually if needed.
+        """
+        print("Force closing loading message...")
+        self.close_enhancement_loading_message()
