@@ -145,7 +145,34 @@ To use the new AI prompt enhancement feature:
 
 ## ⚙️ Configuration
 
-Customize behavior by editing `config.py`:
+### Initial Setup
+
+1. **Copy the template**: Copy `config_template.py` to `config.py`
+2. **Configure API Key**: Add your OpenAI API key to use AI features
+3. **Customize Settings**: Adjust other settings as needed
+
+```bash
+# Copy the configuration template
+cp config_template.py config.py
+```
+
+### OpenAI API Setup
+
+To use the AI prompt enhancement feature:
+
+1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
+2. Add it to `config.py`:
+   ```python
+   OPENAI_API_KEY = "your-api-key-here"
+   ```
+3. Or set it as an environment variable:
+   ```bash
+   set OPENAI_API_KEY=your-api-key-here
+   ```
+
+### Customization Options
+
+Edit `config.py` to customize behavior:
 
 ```python
 # Clipboard Settings
@@ -155,11 +182,17 @@ CLIPBOARD_MONITOR_INTERVAL = 0.5     # Check interval in seconds
 # Hotkey Settings  
 HOTKEY_TOGGLE_DASHBOARD = "ctrl+alt+s"  # Show/hide dashboard
 HOTKEY_SAVE_NOTE = "ctrl+alt+n"         # Save clipboard as note
+HOTKEY_ENHANCE_PROMPT = "ctrl+alt+e"    # Enhance prompt
 
 # Dashboard Settings
 DASHBOARD_WIDTH = 360                # Window width in pixels
-DASHBOARD_HEIGHT = 580               # Window height in pixels
+DASHBOARD_HEIGHT = 680               # Window height in pixels
 DASHBOARD_ALWAYS_ON_TOP = True       # Keep above other windows
+
+# OpenAI Settings
+OPENAI_MODEL = "gpt-4"               # Model to use for enhancement
+OPENAI_MAX_TOKENS = 1500             # Maximum response length
+OPENAI_TEMPERATURE = 0.7             # Creativity level (0.0-1.0)
 
 # Performance
 REFRESH_INTERVAL = 500               # UI refresh rate in milliseconds
