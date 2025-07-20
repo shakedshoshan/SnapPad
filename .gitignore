@@ -162,3 +162,4 @@ error.log
 # Configuration overrides (keep template)
 config_local.py
 config_user.py 
+config.py
