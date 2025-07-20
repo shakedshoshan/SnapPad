@@ -19,6 +19,7 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 - **🚀 Background Service**: Runs silently with minimal resource usage (~10MB RAM)
 - **📋 Smart Clipboard History**: Automatically tracks last 10 unique copied items
 - **📝 Persistent Notes**: SQLite-backed notes that survive application restarts
+- **🤖 AI Prompt Enhancement**: OpenAI-powered prompt improvement for better AI interactions
 - **⌨️ Global Hotkeys**: System-wide shortcuts for instant access (`Ctrl+Alt+S`, `Ctrl+Alt+N`)
 - **🖥️ Always-on-Top Dashboard**: Modern UI positioned on screen edge for quick access
 
@@ -29,6 +30,7 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 - **Database**: SQLite (lightweight, file-based)
 - **Clipboard Management**: pyperclip (cross-platform clipboard access)
 - **Global Hotkeys**: keyboard library (system-wide key capture)
+- **AI Integration**: OpenAI API (GPT models for prompt enhancement)
 - **Windows Integration**: pywin32 (system tray, Windows APIs)
 - **Platform**: Windows 10/11 
 
@@ -104,7 +106,20 @@ python main.py
 |--------|--------|-------------|
 | Toggle Dashboard | `Ctrl + Alt + S` | Show/hide the main interface |
 | Save Note | `Ctrl + Alt + N` | Save current clipboard as note |
+| Enhance Prompt | `Ctrl + Alt + E` | Enhance clipboard content as prompt |
 | Exit | `Ctrl + C` |
+
+### AI Prompt Enhancement
+
+To use the new AI prompt enhancement feature:
+
+1. **Setup**: Follow the guide in `OPENAI_SETUP.md` to configure your OpenAI API key
+2. **Enhance**: Paste any prompt in the input field and click "Enhance Prompt"
+3. **Copy**: Use the enhanced version or click "Copy Enhanced" to copy to clipboard
+
+**Example:**
+- **Input**: "write a story about a cat"
+- **Enhanced**: "Write a compelling short story about a cat with engaging characters, vivid descriptions, and a clear plot structure..."
 
 
 ### Features Overview
@@ -120,6 +135,13 @@ python main.py
 - Edit existing notes with inline editing
 - Delete notes with confirmation
 - All notes persist between application sessions
+
+#### 🤖 AI Prompt Enhancement
+- Paste any prompt and get an AI-enhanced version
+- Uses OpenAI's GPT models for intelligent improvement
+- Configurable model selection (GPT-4, GPT-3.5-turbo)
+- Automatic clipboard copying of enhanced prompts
+- Connection testing and error handling
 
 ## ⚙️ Configuration
 
@@ -152,10 +174,12 @@ SnapPad/
 ├── database.py            # SQLite operations & data models
 ├── clipboard_manager.py   # Clipboard monitoring & history management
 ├── hotkey_manager.py      # Global hotkey registration & handling
+├── openai_manager.py      # OpenAI API integration & prompt enhancement
 ├── dashboard.py           # PyQt6 user interface & window management
 ├── requirements.txt       # Python dependencies
 ├── install.bat            # Automated installer & launcher
 ├── SnapPad.bat            # Quick launcher
+├── OPENAI_SETUP.md        # OpenAI feature setup guide
 └── SnapPad_icon.png       # Application icon
 ```
 
@@ -183,6 +207,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🎯 Roadmap
 
+- [x] AI Prompt Enhancement (OpenAI integration)
 - [ ] Rich text notes support
 - [ ] Note categories and tagging
 - [ ] Search functionality

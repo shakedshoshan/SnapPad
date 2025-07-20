@@ -29,6 +29,7 @@ from PyQt6.QtGui import QIcon, QAction
 from database import DatabaseManager
 from clipboard_manager import ClipboardManager
 from hotkey_manager import HotkeyManager
+from openai_manager import OpenAIManager
 from dashboard import Dashboard
 import config
 
@@ -142,6 +143,7 @@ class SnapPadApp:
         self.database_manager = None
         self.clipboard_manager = None
         self.hotkey_manager = None
+        self.openai_manager = None
         self.background_service = None
         self.system_tray = None
         
@@ -197,6 +199,13 @@ class SnapPadApp:
         # Hotkey manager - handles global keyboard shortcuts
         self.hotkey_manager = HotkeyManager()
         print("Hotkey manager initialized")
+        
+        # OpenAI manager - handles prompt enhancement
+        if config.OPENAI_ENABLED:
+            self.openai_manager = OpenAIManager()
+            print("OpenAI manager initialized")
+        else:
+            print("OpenAI features disabled in config")
     
     def init_dashboard(self):
         """
@@ -213,7 +222,7 @@ class SnapPadApp:
         self.dashboard = Dashboard()
         
         # Connect the dashboard to our data managers
-        self.dashboard.set_managers(self.clipboard_manager, self.database_manager)
+        self.dashboard.set_managers(self.clipboard_manager, self.database_manager, self.openai_manager)
         
         # Show the dashboard when the application first runs
         # Users can hide it later using hotkeys or system tray
@@ -257,6 +266,21 @@ class SnapPadApp:
             self.dashboard.add_note_from_clipboard_safe,  # Thread-safe wrapper
             "Add note from selected text"
         )
+        
+        # Register the enhance prompt hotkey (only if OpenAI is enabled)
+        if config.OPENAI_ENABLED and self.openai_manager:
+            print(f"Registering hotkey: {config.HOTKEY_ENHANCE_PROMPT}")
+            
+            # Test if the hotkey format is valid before registration
+            if not self.hotkey_manager.test_hotkey(config.HOTKEY_ENHANCE_PROMPT):
+                print(f"WARNING: Invalid hotkey format: {config.HOTKEY_ENHANCE_PROMPT}")
+                
+            # Register the hotkey with a thread-safe callback
+            self.hotkey_manager.register_hotkey(
+                config.HOTKEY_ENHANCE_PROMPT,
+                self.dashboard.enhance_prompt_from_clipboard_safe,  # Thread-safe wrapper
+                "Enhance prompt from clipboard"
+            )
         
         # Display all registered hotkeys for user reference
         print("Hotkeys registered:")
@@ -385,12 +409,14 @@ class SnapPadApp:
         Features:
         • Clipboard history (last 10 items)
         • Persistent notes with SQLite storage
-        • Global hotkeys (Ctrl+Alt+S, Ctrl+Alt+N)
+        • AI prompt enhancement (OpenAI integration)
+        • Global hotkeys (Ctrl+Alt+S, Ctrl+Alt+N, Ctrl+Alt+E)
         • Always-on-top side dashboard
         
         Hotkeys:
         • Ctrl+Alt+S: Toggle dashboard
         • Ctrl+Alt+N: Save selected text as note
+        • Ctrl+Alt+E: Enhance prompt from clipboard
         
         Data stored in: %APPDATA%\\SnapPad
         """
@@ -437,6 +463,8 @@ class SnapPadApp:
         print("SnapPad starting...")
         print(f"Press {config.HOTKEY_TOGGLE_DASHBOARD} to toggle dashboard")
         print(f"Press {config.HOTKEY_SAVE_NOTE} to save clipboard as note")
+        if config.OPENAI_ENABLED and self.openai_manager:
+            print(f"Press {config.HOTKEY_ENHANCE_PROMPT} to enhance prompt from clipboard")
         print("Check system tray for more options")
         
         # Show configuration summary if debug mode is enabled
