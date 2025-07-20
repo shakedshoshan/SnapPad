@@ -2711,22 +2711,33 @@ class Dashboard(QMainWindow):
         
         # Simulate Ctrl+C to copy selected text
         keyboard.send('ctrl+c')
-        time.sleep(0.1)  # Small delay to ensure copy completes
+        time.sleep(0.2)  # Longer delay to ensure copy completes
         
         # Get the newly copied text (selected text)
         selected_text = self.clipboard_manager.get_current_clipboard()
+        print(f"Selected text: '{selected_text[:50]}...' (length: {len(selected_text) if selected_text else 0})")
+        
+        # Additional validation: check if the selected text is meaningful
+        if selected_text and len(selected_text.strip()) < 2:
+            print("Selected text too short - likely not meaningful selection")
+            QMessageBox.warning(self, "Invalid Selection", 
+                              "Please select more text (at least 2 characters) before using Ctrl+Alt+E.")
+            return
         
         # Check if we actually got new text and it's different from original
-        if not selected_text or selected_text == original_clipboard:
-            print("No text selected or same as clipboard - no enhancement")
-            # If no text was selected, fall back to clipboard content
-            if original_clipboard:
-                print(f"Falling back to clipboard content: {original_clipboard[:30]}...")
-                selected_text = original_clipboard
-            else:
-                QMessageBox.warning(self, "No Content", 
-                                  "No text selected or found in clipboard to enhance.")
-                return
+        if not selected_text:
+            print("No text selected - clipboard is empty")
+            QMessageBox.warning(self, "No Text Selected", 
+                              "Please select some text before using Ctrl+Alt+E to enhance it.")
+            return
+        
+        if selected_text == original_clipboard:
+            print("Selected text is same as clipboard - no new selection")
+            QMessageBox.warning(self, "No Text Selected", 
+                              "Please select some text before using Ctrl+Alt+E to enhance it.")
+            return
+        
+        print(f"Successfully captured selected text: '{selected_text[:50]}...'")
         
         # Show a simple loading message instead of the dashboard
         self.show_enhancement_loading_message()
