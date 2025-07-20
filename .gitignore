@@ -163,3 +163,18 @@ error.log
 config_local.py
 config_user.py 
 config.py
+
+# API Keys and Secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json
+.env.local
+.env.production
+.env.staging
+
+# OpenAI API Keys (additional protection)
+*openai*
+*api_key*
+*secret*
