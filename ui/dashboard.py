@@ -552,42 +552,7 @@ class Dashboard(QMainWindow):
                 
                 smart_response_layout.addLayout(smart_response_header_layout)
                 
-                # Response type selector
-                response_type_label = QLabel("Response Type:")
-                response_type_label.setStyleSheet("""
-                    QLabel {
-                        font-size: 11px;
-                        color: #7f8c8d;
-                        background: transparent;
-                    }
-                """)
-                smart_response_layout.addWidget(response_type_label)
-                
-                self.response_type_combo = QComboBox()
-                for key, value in config.SMART_RESPONSE_TYPES.items():
-                    self.response_type_combo.addItem(value, key)
-                self.response_type_combo.setCurrentText(config.SMART_RESPONSE_TYPES[config.SMART_RESPONSE_DEFAULT_TYPE])
-                self.response_type_combo.setStyleSheet("""
-                    QComboBox {
-                        border: 1px solid #d1d5db;
-                        border-radius: 4px;
-                        padding: 6px;
-                        font-size: 12px;
-                        background-color: #ffffff;
-                        color: #2c3e50;
-                    }
-                    QComboBox:focus {
-                        border-color: #4a90e2;
-                    }
-                    QComboBox::drop-down {
-                        border: none;
-                    }
-                    QComboBox::down-arrow {
-                        image: none;
-                        border: none;
-                    }
-                """)
-                smart_response_layout.addWidget(self.response_type_combo)
+
                 
                 # Smart response input area
                 smart_response_input_label = QLabel("Enter your question, code, or prompt:")
@@ -1455,9 +1420,8 @@ class Dashboard(QMainWindow):
                               "OpenAI features are not enabled or configured.")
             return
         
-        # Get the user input and response type
+        # Get the user input
         user_input = self.smart_response_input.toPlainText().strip()
-        response_type = self.response_type_combo.currentData()
         
         if not user_input:
             QMessageBox.warning(self, "No Input", 
@@ -1471,7 +1435,7 @@ class Dashboard(QMainWindow):
         self.copy_response_btn.setEnabled(False)
         
         # Create and start worker thread
-        self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, response_type)
+        self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
         self.smart_response_worker.response_complete.connect(self.on_smart_response_complete)
         self.smart_response_worker.response_failed.connect(self.on_smart_response_failed)
         self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished)
@@ -1488,19 +1452,30 @@ class Dashboard(QMainWindow):
         self.generated_response_display.setPlainText(generated_response)
         self.copy_response_btn.setEnabled(True)
         
-        # Automatically copy the response to clipboard if configured
-        if config.AUTO_COPY_SMART_RESPONSE and self.clipboard_manager:
+        # Automatically copy the generated response to clipboard
+        if self.clipboard_manager:
             self.clipboard_manager.copy_to_clipboard(generated_response)
-            print(f"Smart response automatically copied to clipboard: {generated_response[:50]}...")
+            print(f"Generated response automatically copied to clipboard: {generated_response[:50]}...")
+        
+        # Replace the original input with the generated response
+        self.smart_response_input.setPlainText(generated_response)
+        
+        # Automatically paste the generated text to replace selected text
+        import keyboard
+        import time
+        time.sleep(0.1)  # Small delay to ensure clipboard is ready
+        keyboard.send('ctrl+v')
+        print("Generated response automatically pasted to replace selected text")
         
         # Show success status message
-        self.smart_response_status_label.setText("✓ Response generated and copied to clipboard")
+        self.smart_response_status_label.setText("✓ Generated response pasted and input updated")
         
         # Clear status message after 3 seconds
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(3000, lambda: self.smart_response_status_label.setText(""))
         
-        print(f"Smart response generated successfully: {generated_response[:50]}...")
+        print(f"Smart response generation completed successfully: {generated_response[:50]}...")
+        print("Original input replaced with generated response")
     
     def on_smart_response_failed(self, error_message):
         """
@@ -1511,7 +1486,7 @@ class Dashboard(QMainWindow):
         """
         QMessageBox.warning(self, "Response Generation Failed", 
                           f"Failed to generate response: {error_message}")
-        print(f"Smart response generation failed: {error_message}")
+        print(f"Response generation failed: {error_message}")
     
     def on_smart_response_worker_finished(self):
         """
@@ -1532,7 +1507,7 @@ class Dashboard(QMainWindow):
             print("Generated response copied to clipboard")
             
             # Show feedback for manual copy
-            self.smart_response_status_label.setText("✓ Response copied to clipboard")
+            self.smart_response_status_label.setText("✓ Generated response copied to clipboard")
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(2000, lambda: self.smart_response_status_label.setText(""))
     
@@ -1595,11 +1570,8 @@ class Dashboard(QMainWindow):
         # Show loading message
         self.show_smart_response_loading_message()
         
-        # Get the default response type from config
-        response_type = config.SMART_RESPONSE_DEFAULT_TYPE
-        
         # Create and start worker thread for response generation
-        self.smart_response_worker = SmartResponseWorker(self.openai_manager, selected_text, response_type)
+        self.smart_response_worker = SmartResponseWorker(self.openai_manager, selected_text, "general")
         self.smart_response_worker.response_complete.connect(self.on_smart_response_complete_with_replacement)
         self.smart_response_worker.response_failed.connect(self.on_smart_response_failed_silent)
         self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished_silent)

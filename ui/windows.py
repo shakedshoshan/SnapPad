@@ -219,6 +219,12 @@ class NotesWindow(QMainWindow):
         enhanced_prompts_layout.setContentsMargins(0, 0, 0, 0)
         enhanced_prompts_layout.setSpacing(8)
         
+        # Create Smart Response Generation tab
+        self.smart_response_tab = QWidget()
+        smart_response_layout = QVBoxLayout()
+        smart_response_layout.setContentsMargins(0, 0, 0, 0)
+        smart_response_layout.setSpacing(8)
+        
         # Prompt Enhancement Section
         prompt_frame = QFrame()
         prompt_frame.setFrameStyle(QFrame.Shape.Box)
@@ -378,9 +384,171 @@ class NotesWindow(QMainWindow):
         enhanced_prompts_layout.addWidget(prompt_frame)
         self.enhanced_prompts_tab.setLayout(enhanced_prompts_layout)
         
+        # Smart Response Generation Section
+        smart_response_frame = QFrame()
+        smart_response_frame.setFrameStyle(QFrame.Shape.Box)
+        smart_response_frame.setStyleSheet("""
+            QFrame {
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                background: #ffffff;
+                padding: 8px;
+            }
+        """)
+        smart_response_layout_inner = QVBoxLayout()
+        smart_response_layout_inner.setSpacing(8)
+        smart_response_layout_inner.setContentsMargins(8, 8, 8, 8)
+        
+        # Smart response header
+        smart_response_header_layout = QHBoxLayout()
+        smart_response_header_layout.setSpacing(10)
+        
+        smart_response_title = QLabel("🧠 AI Smart Response Generation")
+        smart_response_title.setStyleSheet("""
+            QLabel {
+                font-weight: bold; 
+                font-size: 14px;
+                color: #2c3e50;
+                margin-bottom: 2px;
+                background: transparent;
+            }
+        """)
+        
+        smart_response_header_layout.addWidget(smart_response_title)
+        smart_response_header_layout.addStretch()
+        
+        smart_response_layout_inner.addLayout(smart_response_header_layout)
+        
+
+        
+        # Smart response input area
+        smart_response_input_label = QLabel("Enter your question, code, or prompt:")
+        smart_response_input_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        smart_response_layout_inner.addWidget(smart_response_input_label)
+        
+        self.smart_response_input = QTextEdit()
+        self.smart_response_input.setMaximumHeight(120)
+        self.smart_response_input.setPlaceholderText("Ask a question, paste code for review, or enter any prompt for AI response...")
+        self.smart_response_input.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 13px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QTextEdit:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        smart_response_layout_inner.addWidget(self.smart_response_input)
+        
+        # Smart response loading spinner
+        from .components import LoadingSpinner
+        self.smart_response_loading_spinner = LoadingSpinner()
+        smart_response_layout_inner.addWidget(self.smart_response_loading_spinner)
+        
+        # Generate response button
+        self.smart_response_generate_btn = QPushButton("Generate Response")
+        self.smart_response_generate_btn.clicked.connect(self.generate_smart_response)
+        self.smart_response_generate_btn.setStyleSheet("""
+            QPushButton {
+                background: #9b59b6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #8e44ad;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        smart_response_layout_inner.addWidget(self.smart_response_generate_btn)
+        
+        # Generated response display
+        generated_response_label = QLabel("AI Response:")
+        generated_response_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        smart_response_layout_inner.addWidget(generated_response_label)
+        
+        self.smart_response_display = QTextEdit()
+        self.smart_response_display.setMaximumHeight(200)
+        self.smart_response_display.setReadOnly(True)
+        self.smart_response_display.setPlaceholderText("AI response will appear here...")
+        self.smart_response_display.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 13px;
+                background-color: #f8f9fa;
+                color: #2c3e50;
+            }
+        """)
+        smart_response_layout_inner.addWidget(self.smart_response_display)
+        
+        # Copy generated response button
+        self.smart_response_copy_btn = QPushButton("Copy Response")
+        self.smart_response_copy_btn.clicked.connect(self.copy_smart_response)
+        self.smart_response_copy_btn.setStyleSheet("""
+            QPushButton {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #229954;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        smart_response_layout_inner.addWidget(self.smart_response_copy_btn)
+        
+        # Status label for feedback
+        self.smart_response_status_label = QLabel("")
+        self.smart_response_status_label.setStyleSheet("""
+            QLabel {
+                color: #27ae60;
+                font-size: 11px;
+                font-style: italic;
+                background: transparent;
+                padding: 2px;
+            }
+        """)
+        smart_response_layout_inner.addWidget(self.smart_response_status_label)
+        
+        smart_response_frame.setLayout(smart_response_layout_inner)
+        smart_response_layout.addWidget(smart_response_frame)
+        self.smart_response_tab.setLayout(smart_response_layout)
+        
         # Add tabs to tab widget
         self.tab_widget.addTab(self.all_notes_tab, "📝 All Notes")
         self.tab_widget.addTab(self.enhanced_prompts_tab, "🤖 Enhanced Prompts")
+        self.tab_widget.addTab(self.smart_response_tab, "🧠 Smart Response")
         
         # Add to main layout
         main_layout.addLayout(header_layout)
@@ -668,4 +836,109 @@ class NotesWindow(QMainWindow):
             text (str): The text content to copy
         """
         if self.parent_dashboard and self.parent_dashboard.clipboard_manager:
-            self.parent_dashboard.clipboard_manager.copy_to_clipboard(text) 
+            self.parent_dashboard.clipboard_manager.copy_to_clipboard(text)
+    
+    # =============================================================================
+    # SMART RESPONSE GENERATION METHODS
+    # =============================================================================
+    
+    def generate_smart_response(self):
+        """
+        Generate a smart response to the user input using OpenAI API.
+        """
+        if not hasattr(self, 'openai_manager') or not self.openai_manager:
+            QMessageBox.warning(self, "OpenAI Not Available", 
+                              "OpenAI features are not enabled or configured.")
+            return
+        
+        # Get the user input
+        user_input = self.smart_response_input.toPlainText().strip()
+        
+        if not user_input:
+            QMessageBox.warning(self, "No Input", 
+                              "Please enter some text to generate a response for.")
+            return
+        
+        # Show loading spinner and disable button
+        self.smart_response_loading_spinner.start_animation()
+        self.smart_response_generate_btn.setEnabled(False)
+        self.smart_response_generate_btn.setText("Generating...")
+        self.smart_response_copy_btn.setEnabled(False)
+        
+        # Create and start worker thread
+        from .workers import SmartResponseWorker
+        self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
+        self.smart_response_worker.response_complete.connect(self.on_smart_response_complete)
+        self.smart_response_worker.response_failed.connect(self.on_smart_response_failed)
+        self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished)
+        self.smart_response_worker.start()
+    
+    def on_smart_response_complete(self, generated_response):
+        """
+        Handle successful smart response generation.
+        
+        Args:
+            generated_response (str): The generated response text
+        """
+        # Display the generated response
+        self.smart_response_display.setPlainText(generated_response)
+        self.smart_response_copy_btn.setEnabled(True)
+        
+        # Automatically copy the generated response to clipboard
+        if hasattr(self, 'clipboard_manager') and self.clipboard_manager:
+            self.clipboard_manager.copy_to_clipboard(generated_response)
+            print(f"Generated response automatically copied to clipboard: {generated_response[:50]}...")
+        
+        # Replace the original input with the generated response
+        self.smart_response_input.setPlainText(generated_response)
+        
+        # Automatically paste the generated text to replace selected text
+        import keyboard
+        import time
+        time.sleep(0.1)  # Small delay to ensure clipboard is ready
+        keyboard.send('ctrl+v')
+        print("Generated response automatically pasted to replace selected text")
+        
+        # Show success status message
+        self.smart_response_status_label.setText("✓ Generated response pasted and input updated")
+        
+        # Clear status message after 3 seconds
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(3000, lambda: self.smart_response_status_label.setText(""))
+        
+        print(f"Smart response generation completed successfully: {generated_response[:50]}...")
+        print("Original input replaced with generated response")
+    
+    def on_smart_response_failed(self, error_message):
+        """
+        Handle failed smart response generation.
+        
+        Args:
+            error_message (str): The error message
+        """
+        QMessageBox.warning(self, "Response Generation Failed", 
+                          f"Failed to generate response: {error_message}")
+        print(f"Response generation failed: {error_message}")
+    
+    def on_smart_response_worker_finished(self):
+        """
+        Handle smart response worker thread completion.
+        """
+        self.smart_response_loading_spinner.stop_animation()
+        self.smart_response_generate_btn.setEnabled(True)
+        self.smart_response_generate_btn.setText("Generate Response")
+        print("Smart response worker finished")
+    
+    def copy_smart_response(self):
+        """
+        Copy the generated response to the clipboard.
+        """
+        response_text = self.smart_response_display.toPlainText()
+        if response_text and hasattr(self, 'clipboard_manager') and self.clipboard_manager:
+            self.clipboard_manager.copy_to_clipboard(response_text)
+            print("Generated response copied to clipboard")
+            
+            # Show feedback for manual copy
+            self.smart_response_status_label.setText("✓ Generated response copied to clipboard")
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(2000, lambda: self.smart_response_status_label.setText("")) 

@@ -65,16 +65,7 @@ AUTO_COPY_SMART_RESPONSE = True
 # Options: general, educational, code, creative, analytical, step_by_step, fun
 SMART_RESPONSE_DEFAULT_TYPE = "general"
 
-# Available response types for the smart response feature
-SMART_RESPONSE_TYPES = {
-    "general": "General Helpful Response",
-    "educational": "Educational Explanation", 
-    "code": "Code Review & Improvement",
-    "creative": "Creative Writing",
-    "analytical": "Analytical Breakdown",
-    "step_by_step": "Step-by-Step Solution",
-    "fun": "Fun & Engaging Response"
-}
+
 
 # Global hotkey to generate smart response for current clipboard content
 # This allows quick smart response generation without opening the dashboard
