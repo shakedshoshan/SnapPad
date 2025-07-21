@@ -21,6 +21,7 @@ from .components import LoadingSpinner, ClickableLabel
 from .workers import OpenAIWorker, SmartResponseWorker
 from .notes import EditableNoteWidget, AddNoteDialog
 from .windows import NotesWindow
+from .settings import SettingsWindow
 
 
 class Dashboard(QMainWindow):
@@ -59,11 +60,17 @@ class Dashboard(QMainWindow):
         # Initialize notes window reference
         self.notes_window = None
         
+        # Initialize settings window reference
+        self.settings_window = None
+        
         # Initialize worker thread
         self.openai_worker = None
         
         # Set up the user interface
         self.setup_ui()
+        
+        # Load settings and apply them
+        self.load_and_apply_settings()
         
         # Configure window properties
         self.setup_window_properties()
@@ -109,6 +116,28 @@ class Dashboard(QMainWindow):
         
         # Header layout
         header_layout = QHBoxLayout()
+        
+        # Settings button
+        self.settings_btn = QPushButton("⚙️")
+        self.settings_btn.setMaximumWidth(30)
+        self.settings_btn.setMaximumHeight(24)
+        self.settings_btn.clicked.connect(self.open_settings)
+        self.settings_btn.setStyleSheet("""
+            QPushButton {
+                background: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #7f8c8d;
+            }
+        """)
+        
+        header_layout.addWidget(self.settings_btn)
         header_layout.addStretch()
         
         # Create splitter for resizable sections
@@ -753,14 +782,26 @@ class Dashboard(QMainWindow):
         This method clears existing items and repopulates the clipboard history
         display with the latest history from the clipboard manager.
         """
-        if not self.clipboard_manager:
+        try:
+            if not self.clipboard_manager:
+                return
+            
+            # Check if UI elements still exist (they might be deleted during rebuild)
+            if not hasattr(self, 'clipboard_content_layout') or self.clipboard_content_layout is None:
+                return
+            
+            # Additional safety check
+            if not self.clipboard_content_layout or not hasattr(self.clipboard_content_layout, 'count'):
+                return
+            
+            # Clear existing items
+            for i in reversed(range(self.clipboard_content_layout.count())):
+                child = self.clipboard_content_layout.itemAt(i).widget()
+                if child:
+                    child.setParent(None)
+        except Exception as e:
+            print(f"Error in refresh_clipboard_history: {e}")
             return
-        
-        # Clear existing items
-        for i in reversed(range(self.clipboard_content_layout.count())):
-            child = self.clipboard_content_layout.itemAt(i).widget()
-            if child:
-                child.setParent(None)
         
         # Add current clipboard history
         history = self.clipboard_manager.get_clipboard_history()
@@ -883,14 +924,26 @@ class Dashboard(QMainWindow):
         This method clears existing notes and repopulates the notes list
         with the latest notes from the database manager, applying search and sort filters.
         """
-        if not self.database_manager:
+        try:
+            if not self.database_manager:
+                return
+            
+            # Check if UI elements still exist (they might be deleted during rebuild)
+            if not hasattr(self, 'notes_content_layout') or self.notes_content_layout is None:
+                return
+            
+            # Additional safety check
+            if not self.notes_content_layout or not hasattr(self.notes_content_layout, 'count'):
+                return
+            
+            # Clear existing notes
+            for i in reversed(range(self.notes_content_layout.count())):
+                child = self.notes_content_layout.itemAt(i).widget()
+                if child:
+                    child.setParent(None)
+        except Exception as e:
+            print(f"Error in refresh_notes: {e}")
             return
-        
-        # Clear existing notes
-        for i in reversed(range(self.notes_content_layout.count())):
-            child = self.notes_content_layout.itemAt(i).widget()
-            if child:
-                child.setParent(None)
         
         # Get, filter, and sort notes
         all_notes = self.database_manager.get_all_notes()
@@ -925,7 +978,7 @@ class Dashboard(QMainWindow):
         self.notes_content_layout.addStretch()
         
         # Refresh notes window if it's open
-        if self.notes_window and not self.notes_window.isHidden():
+        if hasattr(self, 'notes_window') and self.notes_window and not self.notes_window.isHidden():
             self.notes_window.refresh_all_notes()
     
     def update_note(self, note_id: int, content: str, title: str, priority: int):
@@ -1043,6 +1096,925 @@ class Dashboard(QMainWindow):
         self.notes_window.show()
         self.notes_window.raise_()
         self.notes_window.activateWindow()
+    
+    def open_settings(self):
+        """
+        Open the settings window to configure dashboard features and layout.
+        """
+        # If window already exists and is visible, just bring it to front
+        if self.settings_window and not self.settings_window.isHidden():
+            self.settings_window.raise_()
+            self.settings_window.activateWindow()
+            return
+        
+        # Create new window or show existing one
+        if not self.settings_window:
+            self.settings_window = SettingsWindow(self)
+            self.settings_window.settings_changed.connect(self.on_settings_changed)
+        
+        self.settings_window.show()
+        self.settings_window.raise_()
+        self.settings_window.activateWindow()
+    
+    def on_settings_changed(self, new_settings):
+        """
+        Handle settings changes from the settings window.
+        
+        Args:
+            new_settings (dict): The new settings configuration
+        """
+        print("Settings changed, applying new configuration...")
+        print(f"New settings: {new_settings}")
+        
+        # Rebuild the dashboard with new settings
+        self.rebuild_dashboard(new_settings)
+    
+    def rebuild_dashboard(self, settings):
+        """
+        Rebuild the dashboard based on the provided settings.
+        
+        Args:
+            settings (dict): The settings configuration
+        """
+        # Store current managers
+        clipboard_manager = self.clipboard_manager
+        database_manager = self.database_manager
+        openai_manager = self.openai_manager
+        
+        # Stop refresh timer to prevent accessing deleted UI elements
+        if hasattr(self, 'refresh_timer'):
+            self.refresh_timer.stop()
+            self.refresh_timer.deleteLater()
+        
+        # Clear current UI elements to prevent access after deletion
+        self.clipboard_content_layout = None
+        self.notes_content_layout = None
+        
+        # Clear current UI
+        central_widget = self.centralWidget()
+        if central_widget:
+            central_widget.deleteLater()
+        
+        # Rebuild UI with new settings
+        self.setup_ui_with_settings(settings)
+        
+        # Restore managers
+        self.set_managers(clipboard_manager, database_manager, openai_manager)
+        
+        # Create new refresh timer
+        self.refresh_timer = QTimer()
+        self.refresh_timer.timeout.connect(self.refresh_clipboard_history)
+        self.refresh_timer.start(config.REFRESH_INTERVAL)
+        
+        print("Dashboard rebuilt with new settings")
+    
+    def setup_ui_with_settings(self, settings):
+        """
+        Set up the user interface based on the provided settings.
+        
+        Args:
+            settings (dict): The settings configuration
+        """
+        # Central widget for the main window
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        
+        # Set main window background
+        self.setStyleSheet("""
+            QMainWindow {
+                background: #f8f9fa;
+            }
+        """)
+        
+        # Main layout - reduced margins
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(8)
+        
+        # Header layout
+        header_layout = QHBoxLayout()
+        
+        # Settings button
+        self.settings_btn = QPushButton("⚙️")
+        self.settings_btn.setMaximumWidth(30)
+        self.settings_btn.setMaximumHeight(24)
+        self.settings_btn.clicked.connect(self.open_settings)
+        self.settings_btn.setStyleSheet("""
+            QPushButton {
+                background: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #7f8c8d;
+            }
+        """)
+        
+        header_layout.addWidget(self.settings_btn)
+        header_layout.addStretch()
+        
+        # Add header to main layout first
+        main_layout.addLayout(header_layout)
+        
+        # Create layout based on settings
+        if settings['columns'] == 1:
+            # Single column layout
+            self.create_single_column_layout(main_layout, settings)
+        elif settings['columns'] == 2:
+            # Two column layout
+            self.create_two_column_layout(main_layout, settings)
+        else:
+            # Three column layout
+            self.create_three_column_layout(main_layout, settings)
+        
+        central_widget.setLayout(main_layout)
+    
+    def create_single_column_layout(self, main_layout, settings):
+        """
+        Create a single column layout.
+        
+        Args:
+            main_layout: The main layout to add widgets to
+            settings (dict): The settings configuration
+        """
+        # Create splitter for resizable sections
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #bdc3c7;
+                border-radius: 1px;
+                margin: 1px;
+            }
+            QSplitter::handle:hover {
+                background-color: #95a5a6;
+            }
+        """)
+        
+        # Add enabled features to splitter
+        enabled_features = [f for f in settings['features'] if f['enabled']]
+        enabled_features.sort(key=lambda x: x['order'])
+        
+        for feature in enabled_features:
+            frame = self.create_feature_frame(feature)
+            if frame:
+                splitter.addWidget(frame)
+        
+        # Set initial sizes
+        if enabled_features:
+            size_per_feature = 200
+            splitter.setSizes([size_per_feature] * len(enabled_features))
+        
+        main_layout.addWidget(splitter)
+    
+    def create_two_column_layout(self, main_layout, settings):
+        """
+        Create a two column layout.
+        
+        Args:
+            main_layout: The main layout to add widgets to
+            settings (dict): The settings configuration
+        """
+        # Create horizontal layout for two columns
+        columns_layout = QHBoxLayout()
+        columns_layout.setSpacing(8)
+        
+        # Create two vertical splitters
+        left_splitter = QSplitter(Qt.Orientation.Vertical)
+        right_splitter = QSplitter(Qt.Orientation.Vertical)
+        
+        for splitter in [left_splitter, right_splitter]:
+            splitter.setStyleSheet("""
+                QSplitter::handle {
+                    background-color: #bdc3c7;
+                    border-radius: 1px;
+                    margin: 1px;
+                }
+                QSplitter::handle:hover {
+                    background-color: #95a5a6;
+                }
+            """)
+        
+        # Add enabled features to splitters
+        enabled_features = [f for f in settings['features'] if f['enabled']]
+        enabled_features.sort(key=lambda x: x['order'])
+        
+        max_features_per_column = settings['max_features_per_column']
+        
+        for i, feature in enumerate(enabled_features):
+            frame = self.create_feature_frame(feature)
+            if frame:
+                if i < max_features_per_column:
+                    left_splitter.addWidget(frame)
+                else:
+                    right_splitter.addWidget(frame)
+        
+        # Set initial sizes for splitters
+        if enabled_features:
+            size_per_feature = 200
+            left_count = min(len(enabled_features), max_features_per_column)
+            right_count = max(0, len(enabled_features) - max_features_per_column)
+            
+            left_splitter.setSizes([size_per_feature] * left_count)
+            right_splitter.setSizes([size_per_feature] * right_count)
+        
+        columns_layout.addWidget(left_splitter)
+        columns_layout.addWidget(right_splitter)
+        
+        main_layout.addLayout(columns_layout)
+    
+    def create_three_column_layout(self, main_layout, settings):
+        """
+        Create a three column layout.
+        
+        Args:
+            main_layout: The main layout to add widgets to
+            settings (dict): The settings configuration
+        """
+        # Create horizontal layout for three columns
+        columns_layout = QHBoxLayout()
+        columns_layout.setSpacing(8)
+        
+        # Create three vertical splitters
+        left_splitter = QSplitter(Qt.Orientation.Vertical)
+        middle_splitter = QSplitter(Qt.Orientation.Vertical)
+        right_splitter = QSplitter(Qt.Orientation.Vertical)
+        
+        for splitter in [left_splitter, middle_splitter, right_splitter]:
+            splitter.setStyleSheet("""
+                QSplitter::handle {
+                    background-color: #bdc3c7;
+                    border-radius: 1px;
+                    margin: 1px;
+                }
+                QSplitter::handle:hover {
+                    background-color: #95a5a6;
+                }
+            """)
+        
+        # Add enabled features to splitters
+        enabled_features = [f for f in settings['features'] if f['enabled']]
+        enabled_features.sort(key=lambda x: x['order'])
+        
+        max_features_per_column = settings['max_features_per_column']
+        
+        for i, feature in enumerate(enabled_features):
+            frame = self.create_feature_frame(feature)
+            if frame:
+                if i < max_features_per_column:
+                    left_splitter.addWidget(frame)
+                elif i < max_features_per_column * 2:
+                    middle_splitter.addWidget(frame)
+                else:
+                    right_splitter.addWidget(frame)
+        
+        # Set initial sizes for splitters
+        if enabled_features:
+            size_per_feature = 200
+            left_count = min(len(enabled_features), max_features_per_column)
+            middle_count = min(max(0, len(enabled_features) - max_features_per_column), max_features_per_column)
+            right_count = max(0, len(enabled_features) - max_features_per_column * 2)
+            
+            left_splitter.setSizes([size_per_feature] * left_count)
+            middle_splitter.setSizes([size_per_feature] * middle_count)
+            right_splitter.setSizes([size_per_feature] * right_count)
+        
+        columns_layout.addWidget(left_splitter)
+        columns_layout.addWidget(middle_splitter)
+        columns_layout.addWidget(right_splitter)
+        
+        main_layout.addLayout(columns_layout)
+    
+    def create_feature_frame(self, feature):
+        """
+        Create a frame for a specific feature.
+        
+        Args:
+            feature (dict): Feature configuration
+            
+        Returns:
+            QFrame: The created frame or None if feature is not supported
+        """
+        feature_id = feature['id']
+        
+        if feature_id == 'clipboard':
+            return self.create_clipboard_frame()
+        elif feature_id == 'notes':
+            return self.create_notes_frame()
+        elif feature_id == 'prompt_enhancement':
+            return self.create_prompt_frame()
+        elif feature_id == 'smart_response':
+            return self.create_smart_response_frame()
+        
+        return None
+    
+    def create_clipboard_frame(self):
+        """
+        Create the clipboard history frame.
+        
+        Returns:
+            QFrame: The clipboard frame
+        """
+        clipboard_frame = QFrame()
+        clipboard_frame.setFrameStyle(QFrame.Shape.Box)
+        clipboard_frame.setStyleSheet("""
+            QFrame {
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                background: #ffffff;
+                padding: 4px;
+            }
+        """)
+        clipboard_layout = QVBoxLayout()
+        clipboard_layout.setSpacing(6)
+        clipboard_layout.setContentsMargins(6, 6, 6, 6)
+        
+        clipboard_title = QLabel("📋 Clipboard History")
+        clipboard_title.setStyleSheet("""
+            QLabel {
+                font-weight: bold; 
+                font-size: 13px;
+                color: #2c3e50;
+                margin-bottom: 2px;
+                background: transparent;
+            }
+        """)
+        clipboard_layout.addWidget(clipboard_title)
+        
+        self.clipboard_scroll = QScrollArea()
+        self.clipboard_scroll.setWidgetResizable(True)
+        self.clipboard_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.clipboard_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.clipboard_scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                background: #f1f3f4;
+                width: 8px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #bdc3c7;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #95a5a6;
+            }
+        """)
+        
+        self.clipboard_content = QWidget()
+        self.clipboard_content_layout = QVBoxLayout()
+        self.clipboard_content_layout.setSpacing(2)
+        self.clipboard_content_layout.setContentsMargins(2, 2, 2, 2)
+        self.clipboard_content.setLayout(self.clipboard_content_layout)
+        self.clipboard_scroll.setWidget(self.clipboard_content)
+        
+        clipboard_layout.addWidget(self.clipboard_scroll)
+        clipboard_frame.setLayout(clipboard_layout)
+        
+        return clipboard_frame
+    
+    def create_notes_frame(self):
+        """
+        Create the notes frame.
+        
+        Returns:
+            QFrame: The notes frame
+        """
+        notes_frame = QFrame()
+        notes_frame.setFrameStyle(QFrame.Shape.Box)
+        notes_frame.setStyleSheet("""
+            QFrame {
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                background: #ffffff;
+                padding: 4px;
+            }
+        """)
+        notes_layout = QVBoxLayout()
+        notes_layout.setSpacing(6)
+        notes_layout.setContentsMargins(6, 6, 6, 6)
+        
+        # Notes header with title and Open button
+        notes_header_layout = QHBoxLayout()
+        notes_header_layout.setSpacing(10)
+        
+        notes_title = QLabel("📝 Notes")
+        notes_title.setStyleSheet("""
+            QLabel {
+                font-weight: bold; 
+                font-size: 13px;
+                color: #2c3e50;
+                margin-bottom: 2px;
+                background: transparent;
+            }
+        """)
+        
+        # Add Note button
+        self.add_note_btn = QPushButton("Add")
+        self.add_note_btn.setMaximumWidth(50)
+        self.add_note_btn.setMaximumHeight(24)
+        self.add_note_btn.clicked.connect(self.show_add_note_dialog)
+        self.add_note_btn.setStyleSheet("""
+            QPushButton {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #229954;
+            }
+        """)
+        
+        # Open Notes button
+        self.open_notes_btn = QPushButton("Open")
+        self.open_notes_btn.setMaximumWidth(60)
+        self.open_notes_btn.setMaximumHeight(24)
+        self.open_notes_btn.clicked.connect(self.open_all_notes)
+        self.open_notes_btn.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #2980b9;
+            }
+        """)
+        
+        notes_header_layout.addWidget(notes_title)
+        notes_header_layout.addStretch()
+        notes_header_layout.addWidget(self.add_note_btn)
+        notes_header_layout.addWidget(self.open_notes_btn)
+        
+        notes_layout.addLayout(notes_header_layout)
+        
+        # Search and Sort section
+        search_sort_layout = QHBoxLayout()
+        search_sort_layout.setSpacing(6)
+        
+        # Search bar
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search notes...")
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 12px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QLineEdit:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        self.search_input.textChanged.connect(self.refresh_notes)
+        
+        # Sort dropdown
+        self.sort_combo = QComboBox()
+        self.sort_combo.addItems([
+            "Updated (newest)",
+            "Updated (oldest)", 
+            "Created (newest)",
+            "Created (oldest)",
+            "Priority (high)",
+            "Priority (low)",
+            "Title (A-Z)",
+            "Title (Z-A)"
+        ])
+        self.sort_combo.setCurrentIndex(0)
+        self.sort_combo.setMaximumWidth(120)
+        self.sort_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 12px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QComboBox:focus {
+                border-color: #4a90e2;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border: none;
+            }
+        """)
+        self.sort_combo.currentTextChanged.connect(self.refresh_notes)
+        
+        search_sort_layout.addWidget(self.search_input)
+        search_sort_layout.addWidget(self.sort_combo)
+        notes_layout.addLayout(search_sort_layout)
+        
+        # Notes scroll area
+        self.notes_scroll = QScrollArea()
+        self.notes_scroll.setWidgetResizable(True)
+        self.notes_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.notes_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.notes_scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                background: #f1f3f4;
+                width: 8px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #bdc3c7;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #95a5a6;
+            }
+        """)
+        
+        self.notes_content = QWidget()
+        self.notes_content_layout = QVBoxLayout()
+        self.notes_content_layout.setSpacing(2)
+        self.notes_content_layout.setContentsMargins(2, 2, 2, 2)
+        self.notes_content.setLayout(self.notes_content_layout)
+        self.notes_scroll.setWidget(self.notes_content)
+        
+        notes_layout.addWidget(self.notes_scroll)
+        notes_frame.setLayout(notes_layout)
+        
+        return notes_frame
+    
+    def create_prompt_frame(self):
+        """
+        Create the prompt enhancement frame.
+        
+        Returns:
+            QFrame: The prompt frame or None if OpenAI is not enabled
+        """
+        import config
+        if not config.OPENAI_ENABLED:
+            return None
+        
+        prompt_frame = QFrame()
+        prompt_frame.setFrameStyle(QFrame.Shape.Box)
+        prompt_frame.setStyleSheet("""
+            QFrame {
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                background: #ffffff;
+                padding: 4px;
+            }
+        """)
+        prompt_layout = QVBoxLayout()
+        prompt_layout.setSpacing(6)
+        prompt_layout.setContentsMargins(6, 6, 6, 6)
+        
+        # Prompt header
+        prompt_header_layout = QHBoxLayout()
+        prompt_header_layout.setSpacing(10)
+        
+        prompt_title = QLabel("🤖 AI Prompt Enhancement")
+        prompt_title.setStyleSheet("""
+            QLabel {
+                font-weight: bold; 
+                font-size: 13px;
+                color: #2c3e50;
+                margin-bottom: 2px;
+                background: transparent;
+            }
+        """)
+        
+        prompt_header_layout.addWidget(prompt_title)
+        prompt_header_layout.addStretch()
+        
+        prompt_layout.addLayout(prompt_header_layout)
+        
+        # Prompt input area
+        prompt_input_label = QLabel("Paste your prompt here:")
+        prompt_input_label.setStyleSheet("""
+            QLabel {
+                font-size: 11px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        prompt_layout.addWidget(prompt_input_label)
+        
+        self.prompt_input = QTextEdit()
+        self.prompt_input.setMaximumHeight(80)
+        self.prompt_input.setPlaceholderText("Paste your prompt here and click 'Enhance' to get an improved version...")
+        self.prompt_input.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 12px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QTextEdit:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        prompt_layout.addWidget(self.prompt_input)
+        
+        # Loading spinner
+        self.loading_spinner = LoadingSpinner()
+        prompt_layout.addWidget(self.loading_spinner)
+        
+        # Enhance button
+        self.enhance_btn = QPushButton("Enhance Prompt")
+        self.enhance_btn.clicked.connect(self.enhance_prompt)
+        self.enhance_btn.setStyleSheet("""
+            QPushButton {
+                background: #e67e22;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #d35400;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        prompt_layout.addWidget(self.enhance_btn)
+        
+        # Enhanced prompt display
+        enhanced_label = QLabel("Enhanced prompt:")
+        enhanced_label.setStyleSheet("""
+            QLabel {
+                font-size: 11px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        prompt_layout.addWidget(enhanced_label)
+        
+        self.enhanced_prompt_display = QTextEdit()
+        self.enhanced_prompt_display.setMaximumHeight(120)
+        self.enhanced_prompt_display.setReadOnly(True)
+        self.enhanced_prompt_display.setPlaceholderText("Enhanced prompt will appear here...")
+        self.enhanced_prompt_display.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 12px;
+                background-color: #f8f9fa;
+                color: #2c3e50;
+            }
+        """)
+        prompt_layout.addWidget(self.enhanced_prompt_display)
+        
+        # Copy enhanced prompt button
+        self.copy_enhanced_btn = QPushButton("Copy Enhanced")
+        self.copy_enhanced_btn.clicked.connect(self.copy_enhanced_prompt)
+        self.copy_enhanced_btn.setStyleSheet("""
+            QPushButton {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #229954;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        prompt_layout.addWidget(self.copy_enhanced_btn)
+        
+        # Status label for feedback
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("""
+            QLabel {
+                color: #27ae60;
+                font-size: 10px;
+                font-style: italic;
+                background: transparent;
+                padding: 2px;
+            }
+        """)
+        prompt_layout.addWidget(self.status_label)
+        
+        prompt_frame.setLayout(prompt_layout)
+        
+        return prompt_frame
+    
+    def create_smart_response_frame(self):
+        """
+        Create the smart response frame.
+        
+        Returns:
+            QFrame: The smart response frame or None if OpenAI is not enabled
+        """
+        import config
+        if not config.OPENAI_ENABLED or not config.SMART_RESPONSE_ENABLED:
+            return None
+        
+        smart_response_frame = QFrame()
+        smart_response_frame.setFrameStyle(QFrame.Shape.Box)
+        smart_response_frame.setStyleSheet("""
+            QFrame {
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                background: #ffffff;
+                padding: 4px;
+            }
+        """)
+        smart_response_layout = QVBoxLayout()
+        smart_response_layout.setSpacing(6)
+        smart_response_layout.setContentsMargins(6, 6, 6, 6)
+        
+        # Smart response header
+        smart_response_header_layout = QHBoxLayout()
+        smart_response_header_layout.setSpacing(10)
+        
+        smart_response_title = QLabel("🧠 AI Smart Response")
+        smart_response_title.setStyleSheet("""
+            QLabel {
+                font-weight: bold; 
+                font-size: 13px;
+                color: #2c3e50;
+                margin-bottom: 2px;
+                background: transparent;
+            }
+        """)
+        
+        smart_response_header_layout.addWidget(smart_response_title)
+        smart_response_header_layout.addStretch()
+        
+        smart_response_layout.addLayout(smart_response_header_layout)
+        
+        # Smart response input area
+        smart_response_input_label = QLabel("Enter your question, code, or prompt:")
+        smart_response_input_label.setStyleSheet("""
+            QLabel {
+                font-size: 11px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        smart_response_layout.addWidget(smart_response_input_label)
+        
+        self.smart_response_input = QTextEdit()
+        self.smart_response_input.setMaximumHeight(80)
+        self.smart_response_input.setPlaceholderText("Ask a question, paste code for review, or enter any prompt for AI response...")
+        self.smart_response_input.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 12px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QTextEdit:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        smart_response_layout.addWidget(self.smart_response_input)
+        
+        # Smart response loading spinner
+        self.smart_response_loading_spinner = LoadingSpinner()
+        smart_response_layout.addWidget(self.smart_response_loading_spinner)
+        
+        # Generate response button
+        self.generate_response_btn = QPushButton("Generate Response")
+        self.generate_response_btn.clicked.connect(self.generate_smart_response)
+        self.generate_response_btn.setStyleSheet("""
+            QPushButton {
+                background: #9b59b6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #8e44ad;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        smart_response_layout.addWidget(self.generate_response_btn)
+        
+        # Generated response display
+        generated_response_label = QLabel("AI Response:")
+        generated_response_label.setStyleSheet("""
+            QLabel {
+                font-size: 11px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        smart_response_layout.addWidget(generated_response_label)
+        
+        self.generated_response_display = QTextEdit()
+        self.generated_response_display.setMaximumHeight(120)
+        self.generated_response_display.setReadOnly(True)
+        self.generated_response_display.setPlaceholderText("AI response will appear here...")
+        self.generated_response_display.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 12px;
+                background-color: #f8f9fa;
+                color: #2c3e50;
+            }
+        """)
+        smart_response_layout.addWidget(self.generated_response_display)
+        
+        # Copy generated response button
+        self.copy_response_btn = QPushButton("Copy Response")
+        self.copy_response_btn.clicked.connect(self.copy_generated_response)
+        self.copy_response_btn.setStyleSheet("""
+            QPushButton {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #229954;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        smart_response_layout.addWidget(self.copy_response_btn)
+        
+        # Status label for feedback
+        self.smart_response_status_label = QLabel("")
+        self.smart_response_status_label.setStyleSheet("""
+            QLabel {
+                color: #27ae60;
+                font-size: 10px;
+                font-style: italic;
+                background: transparent;
+                padding: 2px;
+            }
+        """)
+        smart_response_layout.addWidget(self.smart_response_status_label)
+        
+        smart_response_frame.setLayout(smart_response_layout)
+        
+        return smart_response_frame
+    
+    def load_and_apply_settings(self):
+        """
+        Load settings and apply them to the dashboard.
+        """
+        try:
+            from .settings import SettingsWindow
+            # Create a temporary settings window to load settings
+            temp_settings = SettingsWindow()
+            settings = temp_settings.get_settings()
+            temp_settings.close()
+            
+            # Apply settings
+            self.rebuild_dashboard(settings)
+            print("Settings loaded and applied successfully")
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            # Continue with default layout
     
     def toggle_visibility_safe(self):
         """

@@ -282,7 +282,7 @@ class OpenAIManager:
             try:
                 # Create the chat completion request
                 response = self.client.chat.completions.create(
-                    model=config.OPENAI_MODEL,
+                    model=config.OPENAI_MODEL_SMART_RESPONSE,
                     messages=[
                         {
                             "role": "system",
