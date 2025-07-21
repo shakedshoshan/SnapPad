@@ -72,6 +72,16 @@ class Dashboard(QMainWindow):
         # Load settings and apply them
         self.load_and_apply_settings()
         
+        # Apply initial size adjustment if settings were loaded
+        try:
+            from .settings import SettingsWindow
+            temp_settings = SettingsWindow()
+            settings = temp_settings.get_settings()
+            temp_settings.close()
+            self.adjust_dashboard_size(settings)
+        except Exception as e:
+            print(f"Error applying initial size adjustment: {e}")
+        
         # Configure window properties
         self.setup_window_properties()
         
@@ -737,7 +747,10 @@ class Dashboard(QMainWindow):
         and always stays on top if configured.
         """
         self.setWindowTitle("SnapPad")
-        self.setFixedSize(config.DASHBOARD_WIDTH, config.DASHBOARD_HEIGHT)
+        
+        # Set minimum size instead of fixed size to allow dynamic resizing
+        self.setMinimumSize(config.DASHBOARD_WIDTH, config.DASHBOARD_HEIGHT)
+        self.resize(config.DASHBOARD_WIDTH, config.DASHBOARD_HEIGHT)
         
         # Position window on the right side of the screen
         screen = QApplication.primaryScreen()
@@ -1157,6 +1170,9 @@ class Dashboard(QMainWindow):
         
         # Rebuild UI with new settings
         self.setup_ui_with_settings(settings)
+        
+        # Adjust dashboard width based on number of columns
+        self.adjust_dashboard_size(settings)
         
         # Restore managers
         self.set_managers(clipboard_manager, database_manager, openai_manager)
@@ -1997,6 +2013,42 @@ class Dashboard(QMainWindow):
         smart_response_frame.setLayout(smart_response_layout)
         
         return smart_response_frame
+    
+    def adjust_dashboard_size(self, settings):
+        """
+        Adjust the dashboard size based on the number of columns.
+        
+        Args:
+            settings (dict): The settings configuration
+        """
+        import config
+        
+        # Base width for single column
+        base_width = config.DASHBOARD_WIDTH
+        
+        # Calculate new width based on number of columns
+        columns = settings['columns']
+        if columns == 1:
+            new_width = base_width
+        elif columns == 2:
+            # Two columns: increase width by 60%
+            new_width = int(base_width * 1.6)
+        else:  # 3 columns
+            # Three columns: increase width by 120%
+            new_width = int(base_width * 2.2)
+        
+        # Set new size
+        self.resize(new_width, config.DASHBOARD_HEIGHT)
+        
+        # Reposition window to stay on the right side
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.geometry()
+        
+        x = screen_geometry.width() - new_width - config.DASHBOARD_POSITION_X_OFFSET
+        y = (screen_geometry.height() - self.height()) // 2
+        self.move(x, y)
+        
+        print(f"Dashboard size adjusted: {new_width}x{config.DASHBOARD_HEIGHT} ({columns} columns)")
     
     def load_and_apply_settings(self):
         """

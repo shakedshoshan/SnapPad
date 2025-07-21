@@ -354,6 +354,22 @@ class SettingsWindow(QMainWindow):
         """)
         layout_layout.addWidget(self.layout_preview_label)
         
+        # Size preview
+        self.size_preview_label = QLabel("Expected width: 360px")
+        self.size_preview_label.setStyleSheet("""
+            QLabel {
+                font-size: 10px;
+                color: #27ae60;
+                font-weight: bold;
+                background: transparent;
+                padding: 3px;
+                border: 1px solid #27ae60;
+                border-radius: 3px;
+                background-color: #d5f4e6;
+            }
+        """)
+        layout_layout.addWidget(self.size_preview_label)
+        
         layout_frame.setLayout(layout_layout)
         main_layout.addWidget(layout_frame)
         
@@ -584,12 +600,16 @@ class SettingsWindow(QMainWindow):
         
         if columns == 1:
             preview_text = f"Layout Preview: Single column layout (max {max_features} features per column)"
+            expected_width = 360
         elif columns == 2:
             preview_text = f"Layout Preview: Two column layout (max {max_features} features per column)"
+            expected_width = 576
         else:
             preview_text = f"Layout Preview: Three column layout (max {max_features} features per column)"
+            expected_width = 792
         
         self.layout_preview_label.setText(preview_text)
+        self.size_preview_label.setText(f"Expected width: {expected_width}px")
     
     def reset_to_defaults(self):
         """
