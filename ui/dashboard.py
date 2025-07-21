@@ -499,6 +499,19 @@ class Dashboard(QMainWindow):
             """)
             prompt_layout.addWidget(self.copy_enhanced_btn)
             
+            # Status label for feedback
+            self.status_label = QLabel("")
+            self.status_label.setStyleSheet("""
+                QLabel {
+                    color: #27ae60;
+                    font-size: 10px;
+                    font-style: italic;
+                    background: transparent;
+                    padding: 2px;
+                }
+            """)
+            prompt_layout.addWidget(self.status_label)
+            
             prompt_frame.setLayout(prompt_layout)
             
             # Add frames to splitter
@@ -746,7 +759,6 @@ class Dashboard(QMainWindow):
         # Refresh notes window if it's open
         if self.notes_window and not self.notes_window.isHidden():
             self.notes_window.refresh_all_notes()
-            self.notes_window.refresh_enhanced_prompts()
     
     def update_note(self, note_id: int, content: str, title: str, priority: int):
         """
@@ -847,9 +859,8 @@ class Dashboard(QMainWindow):
         if self.notes_window and not self.notes_window.isHidden():
             self.notes_window.raise_()
             self.notes_window.activateWindow()
-            # Refresh both tabs when bringing to front
+            # Refresh notes when bringing to front
             self.notes_window.refresh_all_notes()
-            self.notes_window.refresh_enhanced_prompts()
             return
         
         # Create new window or show existing one
@@ -857,6 +868,10 @@ class Dashboard(QMainWindow):
             self.notes_window = NotesWindow(self)
         
         self.notes_window.set_database_manager(self.database_manager)
+        if hasattr(self.notes_window, 'set_openai_manager') and self.openai_manager:
+            self.notes_window.set_openai_manager(self.openai_manager)
+        if hasattr(self.notes_window, 'set_clipboard_manager') and self.clipboard_manager:
+            self.notes_window.set_clipboard_manager(self.clipboard_manager)
         self.notes_window.show()
         self.notes_window.raise_()
         self.notes_window.activateWindow()
@@ -929,9 +944,34 @@ class Dashboard(QMainWindow):
         Args:
             enhanced_prompt (str): The enhanced prompt text
         """
+        # Display the enhanced prompt
         self.enhanced_prompt_display.setPlainText(enhanced_prompt)
         self.copy_enhanced_btn.setEnabled(True)
+        
+        # Automatically copy the enhanced prompt to clipboard
+        if self.clipboard_manager:
+            self.clipboard_manager.copy_to_clipboard(enhanced_prompt)
+            print(f"Enhanced prompt automatically copied to clipboard: {enhanced_prompt[:50]}...")
+        
+        # Replace the original prompt with the enhanced version
+        self.prompt_input.setPlainText(enhanced_prompt)
+        
+        # Automatically paste the enhanced text to replace selected text
+        import keyboard
+        import time
+        time.sleep(0.1)  # Small delay to ensure clipboard is ready
+        keyboard.send('ctrl+v')
+        print("Enhanced prompt automatically pasted to replace selected text")
+        
+        # Show success status message
+        self.status_label.setText("✓ Enhanced prompt pasted and input updated")
+        
+        # Clear status message after 3 seconds
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+        
         print(f"Enhancement completed successfully: {enhanced_prompt[:50]}...")
+        print("Original prompt replaced with enhanced version")
     
     def on_enhancement_failed(self, error_message):
         """
@@ -961,6 +1001,11 @@ class Dashboard(QMainWindow):
         if enhanced_text and self.clipboard_manager:
             self.clipboard_manager.copy_to_clipboard(enhanced_text)
             print("Enhanced prompt copied to clipboard")
+            
+            # Show feedback for manual copy
+            self.status_label.setText("✓ Enhanced prompt copied to clipboard")
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(2000, lambda: self.status_label.setText(""))
     
     def enhance_prompt_from_clipboard(self):
         """
@@ -1082,6 +1127,13 @@ class Dashboard(QMainWindow):
             # Copy enhanced text to clipboard
             self.clipboard_manager.copy_to_clipboard(enhanced_text)
             print(f"Enhanced text copied to clipboard: {enhanced_text[:50]}...")
+        
+        # Automatically paste the enhanced text to replace selected text
+        import keyboard
+        import time
+        time.sleep(0.2)  # Slightly longer delay to ensure clipboard is ready and user sees the process
+        keyboard.send('ctrl+v')
+        print("Enhanced text automatically pasted to replace selected text")
         
         # Close loading dialog
         self.close_enhancement_loading_message()

@@ -6,7 +6,7 @@ This module contains window classes for the SnapPad application.
 
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QComboBox, QFrame, QScrollArea, 
-                             QTabWidget, QApplication)
+                             QTabWidget, QApplication, QMessageBox, QPushButton, QTextEdit)
 from PyQt6.QtCore import Qt
 from .notes import EditableNoteWidget
 
@@ -219,120 +219,163 @@ class NotesWindow(QMainWindow):
         enhanced_prompts_layout.setContentsMargins(0, 0, 0, 0)
         enhanced_prompts_layout.setSpacing(8)
         
-        # Search and Sort section for Enhanced Prompts tab
-        enhanced_prompts_search_layout = QHBoxLayout()
-        enhanced_prompts_search_layout.setSpacing(6)
-        
-        # Search bar for Enhanced Prompts
-        self.enhanced_prompts_search_input = QLineEdit()
-        self.enhanced_prompts_search_input.setPlaceholderText("Search enhanced prompts...")
-        self.enhanced_prompts_search_input.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #d1d5db;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 13px;
-                background-color: #ffffff;
-                color: #2c3e50;
-            }
-            QLineEdit:focus {
-                border-color: #4a90e2;
-            }
-        """)
-        self.enhanced_prompts_search_input.textChanged.connect(self.refresh_enhanced_prompts)
-        
-        # Sort dropdown for Enhanced Prompts
-        self.enhanced_prompts_sort_combo = QComboBox()
-        self.enhanced_prompts_sort_combo.addItems([
-            "Updated (newest)",
-            "Updated (oldest)", 
-            "Created (newest)",
-            "Created (oldest)",
-            "Priority (high)",
-            "Priority (low)",
-            "Title (A-Z)",
-            "Title (Z-A)"
-        ])
-        self.enhanced_prompts_sort_combo.setCurrentIndex(0)
-        self.enhanced_prompts_sort_combo.setMaximumWidth(150)
-        self.enhanced_prompts_sort_combo.setStyleSheet("""
-            QComboBox {
-                border: 1px solid #d1d5db;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 13px;
-                background-color: #ffffff;
-                color: #2c3e50;
-            }
-            QComboBox:focus {
-                border-color: #4a90e2;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border: none;
-            }
-        """)
-        self.enhanced_prompts_sort_combo.currentTextChanged.connect(self.refresh_enhanced_prompts)
-        
-        enhanced_prompts_search_layout.addWidget(self.enhanced_prompts_search_input)
-        enhanced_prompts_search_layout.addWidget(self.enhanced_prompts_sort_combo)
-        
-        # Enhanced Prompts container
-        self.enhanced_prompts_container = QFrame()
-        self.enhanced_prompts_container.setFrameStyle(QFrame.Shape.Box)
-        self.enhanced_prompts_container.setStyleSheet("""
+        # Prompt Enhancement Section
+        prompt_frame = QFrame()
+        prompt_frame.setFrameStyle(QFrame.Shape.Box)
+        prompt_frame.setStyleSheet("""
             QFrame {
                 border: 1px solid #d1d5db;
                 border-radius: 8px;
                 background: #ffffff;
-                padding: 4px;
+                padding: 8px;
             }
         """)
+        prompt_layout = QVBoxLayout()
+        prompt_layout.setSpacing(8)
+        prompt_layout.setContentsMargins(8, 8, 8, 8)
         
-        enhanced_prompts_container_layout = QVBoxLayout()
-        enhanced_prompts_container_layout.setSpacing(6)
-        enhanced_prompts_container_layout.setContentsMargins(4, 4, 4, 4)
+        # Prompt header
+        prompt_header_layout = QHBoxLayout()
+        prompt_header_layout.setSpacing(10)
         
-        # Enhanced Prompts scroll area
-        self.enhanced_prompts_scroll = QScrollArea()
-        self.enhanced_prompts_scroll.setWidgetResizable(True)
-        self.enhanced_prompts_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.enhanced_prompts_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.enhanced_prompts_scroll.setStyleSheet("""
-            QScrollArea {
-                border: none;
+        prompt_title = QLabel("🤖 AI Prompt Enhancement")
+        prompt_title.setStyleSheet("""
+            QLabel {
+                font-weight: bold; 
+                font-size: 14px;
+                color: #2c3e50;
+                margin-bottom: 2px;
                 background: transparent;
             }
-            QScrollBar:vertical {
-                background: #f1f3f4;
-                width: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background: #bdc3c7;
-                border-radius: 6px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #95a5a6;
-            }
         """)
         
-        self.enhanced_prompts_content = QWidget()
-        self.enhanced_prompts_content_layout = QVBoxLayout()
-        self.enhanced_prompts_content_layout.setSpacing(6)
-        self.enhanced_prompts_content_layout.setContentsMargins(4, 4, 4, 4)
-        self.enhanced_prompts_content.setLayout(self.enhanced_prompts_content_layout)
-        self.enhanced_prompts_scroll.setWidget(self.enhanced_prompts_content)
+        prompt_header_layout.addWidget(prompt_title)
+        prompt_header_layout.addStretch()
         
-        enhanced_prompts_container_layout.addWidget(self.enhanced_prompts_scroll)
-        self.enhanced_prompts_container.setLayout(enhanced_prompts_container_layout)
+        prompt_layout.addLayout(prompt_header_layout)
         
-        enhanced_prompts_layout.addLayout(enhanced_prompts_search_layout)
-        enhanced_prompts_layout.addWidget(self.enhanced_prompts_container)
+        # Prompt input area
+        prompt_input_label = QLabel("Paste your prompt here:")
+        prompt_input_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        prompt_layout.addWidget(prompt_input_label)
+        
+        self.prompt_input = QTextEdit()
+        self.prompt_input.setMaximumHeight(100)
+        self.prompt_input.setPlaceholderText("Paste your prompt here and click 'Enhance' to get an improved version...")
+        self.prompt_input.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 13px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QTextEdit:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        prompt_layout.addWidget(self.prompt_input)
+        
+        # Loading spinner
+        from .components import LoadingSpinner
+        self.loading_spinner = LoadingSpinner()
+        prompt_layout.addWidget(self.loading_spinner)
+        
+        # Enhance button
+        self.enhance_btn = QPushButton("Enhance Prompt")
+        self.enhance_btn.clicked.connect(self.enhance_prompt)
+        self.enhance_btn.setStyleSheet("""
+            QPushButton {
+                background: #e67e22;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #d35400;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        prompt_layout.addWidget(self.enhance_btn)
+        
+        # Enhanced prompt display
+        enhanced_label = QLabel("Enhanced prompt:")
+        enhanced_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #7f8c8d;
+                background: transparent;
+            }
+        """)
+        prompt_layout.addWidget(enhanced_label)
+        
+        self.enhanced_prompt_display = QTextEdit()
+        self.enhanced_prompt_display.setMaximumHeight(150)
+        self.enhanced_prompt_display.setReadOnly(True)
+        self.enhanced_prompt_display.setPlaceholderText("Enhanced prompt will appear here...")
+        self.enhanced_prompt_display.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 13px;
+                background-color: #f8f9fa;
+                color: #2c3e50;
+            }
+        """)
+        prompt_layout.addWidget(self.enhanced_prompt_display)
+        
+        # Copy enhanced prompt button
+        self.copy_enhanced_btn = QPushButton("Copy Enhanced")
+        self.copy_enhanced_btn.clicked.connect(self.copy_enhanced_prompt)
+        self.copy_enhanced_btn.setStyleSheet("""
+            QPushButton {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #229954;
+            }
+            QPushButton:disabled {
+                background: #bdc3c7;
+                color: #7f8c8d;
+            }
+        """)
+        prompt_layout.addWidget(self.copy_enhanced_btn)
+        
+        # Status label for feedback
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("""
+            QLabel {
+                color: #27ae60;
+                font-size: 11px;
+                font-style: italic;
+                background: transparent;
+                padding: 2px;
+            }
+        """)
+        prompt_layout.addWidget(self.status_label)
+        
+        prompt_frame.setLayout(prompt_layout)
+        enhanced_prompts_layout.addWidget(prompt_frame)
         self.enhanced_prompts_tab.setLayout(enhanced_prompts_layout)
         
         # Add tabs to tab widget
@@ -373,7 +416,6 @@ class NotesWindow(QMainWindow):
         """
         self.database_manager = database_manager
         self.refresh_all_notes()
-        self.refresh_enhanced_prompts()
     
     def _filter_and_sort_notes(self, notes, search_input=None, sort_combo=None):
         """
@@ -468,62 +510,124 @@ class NotesWindow(QMainWindow):
         # Add stretch to push items to top
         self.all_notes_content_layout.addStretch()
     
-    def refresh_enhanced_prompts(self):
+    def enhance_prompt(self):
         """
-        Refresh the display of enhanced prompts in the Enhanced Prompts tab.
+        Enhance the prompt in the input field using OpenAI API.
         """
-        if not self.database_manager:
+        if not hasattr(self, 'openai_manager') or not self.openai_manager:
+            QMessageBox.warning(self, "OpenAI Not Available", 
+                              "OpenAI features are not enabled or configured.")
             return
         
-        # Clear existing notes
-        for i in reversed(range(self.enhanced_prompts_content_layout.count())):
-            child = self.enhanced_prompts_content_layout.itemAt(i).widget()
-            if child:
-                child.setParent(None)
+        # Get the prompt from input
+        original_prompt = self.prompt_input.toPlainText().strip()
         
-        # Get, filter, and sort notes - filter for enhanced prompts
-        all_notes = self.database_manager.get_all_notes()
+        if not original_prompt:
+            QMessageBox.warning(self, "No Prompt", 
+                              "Please enter a prompt to enhance.")
+            return
         
-        # Filter for enhanced prompts (notes that contain "enhanced" or "prompt" in title/content)
-        enhanced_prompts = []
-        for note in all_notes:
-            title_lower = note['title'].lower()
-            content_lower = note['content'].lower()
-            if ('enhanced' in title_lower or 'prompt' in title_lower or 
-                'enhanced' in content_lower or 'prompt' in content_lower):
-                enhanced_prompts.append(note)
+        # Show loading spinner and disable button
+        self.loading_spinner.start_animation()
+        self.enhance_btn.setEnabled(False)
+        self.enhance_btn.setText("Enhancing...")
+        self.copy_enhanced_btn.setEnabled(False)
         
-        notes = self._filter_and_sort_notes(enhanced_prompts, self.enhanced_prompts_search_input, self.enhanced_prompts_sort_combo)
+        # Create and start worker thread
+        from .workers import OpenAIWorker
+        self.openai_worker = OpenAIWorker(self.openai_manager, original_prompt)
+        self.openai_worker.enhancement_complete.connect(self.on_enhancement_complete)
+        self.openai_worker.enhancement_failed.connect(self.on_enhancement_failed)
+        self.openai_worker.finished.connect(self.on_worker_finished)
+        self.openai_worker.start()
+    
+    def on_enhancement_complete(self, enhanced_prompt):
+        """
+        Handle successful prompt enhancement.
         
-        if not notes:
-            # Check if we have enhanced prompts but they're filtered out
-            if enhanced_prompts and self.enhanced_prompts_search_input.text().strip():
-                no_notes_label = QLabel("No enhanced prompts match your search criteria.")
-            else:
-                no_notes_label = QLabel("No enhanced prompts yet. Use the AI prompt enhancement feature to create some!")
+        Args:
+            enhanced_prompt (str): The enhanced prompt text
+        """
+        # Display the enhanced prompt
+        self.enhanced_prompt_display.setPlainText(enhanced_prompt)
+        self.copy_enhanced_btn.setEnabled(True)
+        
+        # Automatically copy the enhanced prompt to clipboard
+        if hasattr(self, 'clipboard_manager') and self.clipboard_manager:
+            self.clipboard_manager.copy_to_clipboard(enhanced_prompt)
+            print(f"Enhanced prompt automatically copied to clipboard: {enhanced_prompt[:50]}...")
+        
+        # Replace the original prompt with the enhanced version
+        self.prompt_input.setPlainText(enhanced_prompt)
+        
+        # Automatically paste the enhanced text to replace selected text
+        import keyboard
+        import time
+        time.sleep(0.2)  # Slightly longer delay to ensure clipboard is ready and user sees the process
+        keyboard.send('ctrl+v')
+        print("Enhanced prompt automatically pasted to replace selected text")
+        
+        # Show success status message
+        self.status_label.setText("✓ Enhanced prompt pasted and input updated")
+        
+        # Clear status message after 3 seconds
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+        
+        print(f"Enhancement completed successfully: {enhanced_prompt[:50]}...")
+        print("Original prompt replaced with enhanced version")
+    
+    def on_enhancement_failed(self, error_message):
+        """
+        Handle failed prompt enhancement.
+        
+        Args:
+            error_message (str): The error message
+        """
+        QMessageBox.warning(self, "Enhancement Failed", 
+                          f"Failed to enhance prompt: {error_message}")
+        print(f"Enhancement failed: {error_message}")
+    
+    def on_worker_finished(self):
+        """
+        Handle worker thread completion.
+        """
+        self.loading_spinner.stop_animation()
+        self.enhance_btn.setEnabled(True)
+        self.enhance_btn.setText("Enhance Prompt")
+        print("OpenAI worker finished")
+    
+    def copy_enhanced_prompt(self):
+        """
+        Copy the enhanced prompt to the clipboard.
+        """
+        enhanced_text = self.enhanced_prompt_display.toPlainText()
+        if enhanced_text and hasattr(self, 'clipboard_manager') and self.clipboard_manager:
+            self.clipboard_manager.copy_to_clipboard(enhanced_text)
+            print("Enhanced prompt copied to clipboard")
             
-            no_notes_label.setStyleSheet("""
-                QLabel {
-                    color: #7f8c8d; 
-                    font-style: italic; 
-                    font-size: 14px;
-                    padding: 20px;
-                    background: transparent;
-                    text-align: center;
-                }
-            """)
-            no_notes_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.enhanced_prompts_content_layout.addWidget(no_notes_label)
-        else:
-            for note in notes:
-                note_widget = EditableNoteWidget(note)
-                note_widget.note_updated.connect(self.update_note)
-                note_widget.note_deleted.connect(self.delete_note)
-                note_widget.note_copied.connect(self.copy_to_clipboard)
-                self.enhanced_prompts_content_layout.addWidget(note_widget)
+            # Show feedback for manual copy
+            self.status_label.setText("✓ Enhanced prompt copied to clipboard")
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(2000, lambda: self.status_label.setText(""))
+    
+    def set_openai_manager(self, openai_manager):
+        """
+        Set the OpenAI manager for the notes window.
         
-        # Add stretch to push items to top
-        self.enhanced_prompts_content_layout.addStretch()
+        Args:
+            openai_manager: The OpenAI manager instance
+        """
+        self.openai_manager = openai_manager
+    
+    def set_clipboard_manager(self, clipboard_manager):
+        """
+        Set the clipboard manager for the notes window.
+        
+        Args:
+            clipboard_manager: The clipboard manager instance
+        """
+        self.clipboard_manager = clipboard_manager
     
     def update_note(self, note_id: int, content: str, title: str, priority: int):
         """
@@ -538,7 +642,6 @@ class NotesWindow(QMainWindow):
         if self.database_manager:
             self.database_manager.update_note(note_id, content, title, priority)
             self.refresh_all_notes()
-            self.refresh_enhanced_prompts()
             # Refresh parent dashboard if available
             if self.parent_dashboard:
                 self.parent_dashboard.refresh_notes()
@@ -553,7 +656,6 @@ class NotesWindow(QMainWindow):
         if self.database_manager:
             self.database_manager.delete_note(note_id)
             self.refresh_all_notes()
-            self.refresh_enhanced_prompts()
             # Refresh parent dashboard if available
             if self.parent_dashboard:
                 self.parent_dashboard.refresh_notes()
