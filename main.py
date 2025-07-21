@@ -30,7 +30,7 @@ from database import DatabaseManager
 from clipboard_manager import ClipboardManager
 from hotkey_manager import HotkeyManager
 from openai_manager import OpenAIManager
-from dashboard import Dashboard
+from ui.dashboard import Dashboard
 import config
 
 
