@@ -243,3 +243,117 @@ class OpenAIManager:
             except Exception as e:
                 print(f"Error updating API key: {e}")
                 return False 
+
+    def generate_smart_response(self, user_input: str, response_type: str = "general") -> Optional[str]:
+        """
+        Generate a smart response to user input using OpenAI's GPT model.
+        
+        This method takes user input (question, exercise, code snippet, riddle, etc.)
+        and generates a coherent, relevant response based on the specified response type.
+        
+        Args:
+            user_input (str): The user's input (question, code, riddle, etc.)
+            response_type (str): The type of response to generate (general, educational, code, etc.)
+            
+        Returns:
+            Optional[str]: The generated response, or None if generation failed
+            
+        Example:
+            response = manager.generate_smart_response("What is recursion?", "educational")
+            # Returns: "Recursion is a programming concept where a function calls itself..."
+        """
+        if not self.is_available():
+            print("OpenAI API not available. Check configuration and API key.")
+            return None
+        
+        if not user_input or not user_input.strip():
+            print("Empty input provided for response generation.")
+            return None
+        
+        # Limit input length
+        if len(user_input) > config.SMART_RESPONSE_MAX_INPUT_LENGTH:
+            print(f"Input too long. Maximum length is {config.SMART_RESPONSE_MAX_INPUT_LENGTH} characters.")
+            return None
+        
+        # Get the system prompt based on response type
+        system_prompt = self._get_response_system_prompt(response_type)
+        
+        with self._lock:
+            try:
+                # Create the chat completion request
+                response = self.client.chat.completions.create(
+                    model=config.OPENAI_MODEL,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": system_prompt
+                        },
+                        {
+                            "role": "user",
+                            "content": user_input
+                        }
+                    ],
+                    max_tokens=config.OPENAI_MAX_TOKENS,
+                    temperature=config.OPENAI_TEMPERATURE
+                )
+                
+                # Extract the generated response from the response
+                generated_response = response.choices[0].message.content.strip()
+                
+                if generated_response:
+                    print(f"Smart response generated successfully. Input: {len(user_input)} chars, Response: {len(generated_response)} chars")
+                    return generated_response
+                else:
+                    print("OpenAI returned empty response")
+                    return None
+                    
+            except Exception as e:
+                print(f"Error generating smart response: {e}")
+                return None
+    
+    def _get_response_system_prompt(self, response_type: str) -> str:
+        """
+        Get the appropriate system prompt based on the response type.
+        
+        Args:
+            response_type (str): The type of response to generate
+            
+        Returns:
+            str: The system prompt for the specified response type
+        """
+        prompts = {
+            "general": """You are a helpful AI assistant. Provide clear, accurate, and helpful responses to user questions and requests. 
+            Focus on being informative, concise, and relevant to the user's input. 
+            If the input is unclear, ask for clarification. Always be polite and professional.""",
+            
+            "educational": """You are an educational expert. Provide detailed, well-structured explanations that help users learn and understand concepts.
+            Break down complex topics into digestible parts, use examples when helpful, and encourage deeper understanding.
+            Focus on clarity, accuracy, and educational value.""",
+            
+            "code": """You are a programming expert and code reviewer. Analyze code snippets, identify issues, suggest improvements, and provide explanations.
+            When reviewing code, consider:
+            - Code quality and best practices
+            - Performance and efficiency
+            - Readability and maintainability
+            - Security considerations
+            - Error handling
+            Provide specific, actionable feedback and improvements.""",
+            
+            "creative": """You are a creative writing assistant. Help users with creative writing tasks, brainstorming, and artistic expression.
+            Provide imaginative, engaging, and original content while maintaining coherence and structure.
+            Adapt your style to match the user's creative needs and preferences.""",
+            
+            "analytical": """You are an analytical expert. Break down complex problems, analyze data, and provide logical, evidence-based insights.
+            Use structured thinking, identify key factors, and present clear conclusions.
+            Focus on objectivity, thoroughness, and actionable insights.""",
+            
+            "step_by_step": """You are a step-by-step problem solver. Break down complex tasks and problems into clear, manageable steps.
+            Provide detailed instructions that are easy to follow, with explanations for each step.
+            Ensure the solution is complete and addresses the user's needs thoroughly.""",
+            
+            "fun": """You are a fun and engaging conversationalist. Respond with humor, creativity, and enthusiasm while still being helpful.
+            Use a light, friendly tone and make interactions enjoyable.
+            Balance entertainment with usefulness and maintain appropriate humor."""
+        }
+        
+        return prompts.get(response_type, prompts["general"]) 

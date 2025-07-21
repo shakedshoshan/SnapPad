@@ -282,6 +282,21 @@ class SnapPadApp:
                 "Enhance prompt from clipboard"
             )
         
+        # Register the smart response hotkey (only if OpenAI and smart response are enabled)
+        if config.OPENAI_ENABLED and config.SMART_RESPONSE_ENABLED and self.openai_manager:
+            print(f"Registering hotkey: {config.HOTKEY_SMART_RESPONSE}")
+            
+            # Test if the hotkey format is valid before registration
+            if not self.hotkey_manager.test_hotkey(config.HOTKEY_SMART_RESPONSE):
+                print(f"WARNING: Invalid hotkey format: {config.HOTKEY_SMART_RESPONSE}")
+                
+            # Register the hotkey with a thread-safe callback
+            self.hotkey_manager.register_hotkey(
+                config.HOTKEY_SMART_RESPONSE,
+                self.dashboard.generate_smart_response_from_clipboard_safe,  # Thread-safe wrapper
+                "Generate smart response from clipboard"
+            )
+        
         # Display all registered hotkeys for user reference
         print("Hotkeys registered:")
         for hotkey, description in self.hotkey_manager.get_registered_hotkeys().items():

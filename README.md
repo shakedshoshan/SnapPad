@@ -20,7 +20,8 @@ SnapPad is designed to solve the common problem of losing clipboard content and 
 - **📋 Smart Clipboard History**: Automatically tracks last 10 unique copied items
 - **📝 Persistent Notes**: SQLite-backed notes that survive application restarts
 - **🤖 AI Prompt Enhancement**: OpenAI-powered prompt improvement for better AI interactions
-- **⌨️ Global Hotkeys**: System-wide shortcuts for instant access (`Ctrl+Alt+S`, `Ctrl+Alt+N`)
+- **🧠 AI Smart Response**: Generate intelligent responses to questions, code, or any text input
+- **⌨️ Global Hotkeys**: System-wide shortcuts for instant access (`Ctrl+Alt+S`, `Ctrl+Alt+N`, `Ctrl+Alt+R`)
 - **🖥️ Always-on-Top Dashboard**: Modern UI positioned on screen edge for quick access
 
 ## 🏗️ Technical Stack
@@ -121,6 +122,32 @@ To use the new AI prompt enhancement feature:
 - **Input**: "write a story about a cat"
 - **Enhanced**: "Write a compelling short story about a cat with engaging characters, vivid descriptions, and a clear plot structure..."
 
+### AI Smart Response Generation
+
+The new AI Smart Response feature allows you to generate intelligent responses to questions, code snippets, or any text input using OpenAI's GPT models.
+
+**How to use:**
+1. **Setup**: Ensure OpenAI API is configured (same as prompt enhancement)
+2. **Select Type**: Choose from 7 different response types (General, Educational, Code, Creative, etc.)
+3. **Input**: Enter your question, code, or prompt in the input field
+4. **Generate**: Click "Generate Response" to get an AI-powered response
+5. **Copy**: Use the generated response or copy it to clipboard
+
+**Response Types:**
+- **General**: Helpful responses to general questions
+- **Educational**: Detailed explanations for learning
+- **Code**: Code review and improvement suggestions
+- **Creative**: Creative writing and brainstorming
+- **Analytical**: Logical analysis and breakdowns
+- **Step-by-Step**: Detailed instructions and solutions
+- **Fun**: Engaging and entertaining responses
+
+**Hotkey**: `Ctrl+Alt+R` - Generate smart response from selected text
+
+**Example:**
+- **Input**: "What is recursion in programming?"
+- **Response Type**: Educational
+- **Output**: "Recursion is a programming concept where a function calls itself..."
 
 ### Features Overview
 
@@ -142,6 +169,13 @@ To use the new AI prompt enhancement feature:
 - Configurable model selection (GPT-4, GPT-3.5-turbo)
 - Automatic clipboard copying of enhanced prompts
 - Connection testing and error handling
+
+#### 🧠 AI Smart Response Generation
+- Generate intelligent responses to questions, code, or any text input
+- 7 different response types (General, Educational, Code, Creative, etc.)
+- Uses OpenAI's GPT models for context-aware responses
+- Automatic clipboard copying and text replacement
+- Global hotkey support (`Ctrl+Alt+R`) for quick access
 
 ## ⚙️ Configuration
 
@@ -183,6 +217,7 @@ CLIPBOARD_MONITOR_INTERVAL = 0.5     # Check interval in seconds
 HOTKEY_TOGGLE_DASHBOARD = "ctrl+alt+s"  # Show/hide dashboard
 HOTKEY_SAVE_NOTE = "ctrl+alt+n"         # Save clipboard as note
 HOTKEY_ENHANCE_PROMPT = "ctrl+alt+e"    # Enhance prompt
+HOTKEY_SMART_RESPONSE = "ctrl+alt+r"    # Generate smart response
 
 # Dashboard Settings
 DASHBOARD_WIDTH = 360                # Window width in pixels
@@ -207,7 +242,7 @@ SnapPad/
 ├── database.py            # SQLite operations & data models
 ├── clipboard_manager.py   # Clipboard monitoring & history management
 ├── hotkey_manager.py      # Global hotkey registration & handling
-├── openai_manager.py      # OpenAI API integration & prompt enhancement
+├── openai_manager.py      # OpenAI API integration & AI features
 ├── dashboard.py           # PyQt6 user interface & window management
 ├── requirements.txt       # Python dependencies
 ├── install.bat            # Automated installer & launcher
@@ -241,6 +276,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🎯 Roadmap
 
 - [x] AI Prompt Enhancement (OpenAI integration)
+- [x] AI Smart Response Generation (OpenAI integration)
 - [ ] Rich text notes support
 - [ ] Note categories and tagging
 - [ ] Search functionality

@@ -49,6 +49,39 @@ PROMPT_MAX_INPUT_LENGTH = 3000
 AUTO_COPY_ENHANCED_PROMPT = True
 
 # =============================================================================
+# SMART RESPONSE SETTINGS
+# =============================================================================
+
+# Whether to enable smart response features
+SMART_RESPONSE_ENABLED = True
+
+# Maximum length of input for smart response generation
+SMART_RESPONSE_MAX_INPUT_LENGTH = 4000
+
+# Whether to automatically copy smart response to clipboard
+AUTO_COPY_SMART_RESPONSE = True
+
+# Default response type for smart responses
+# Options: general, educational, code, creative, analytical, step_by_step, fun
+SMART_RESPONSE_DEFAULT_TYPE = "general"
+
+# Available response types for the smart response feature
+SMART_RESPONSE_TYPES = {
+    "general": "General Helpful Response",
+    "educational": "Educational Explanation", 
+    "code": "Code Review & Improvement",
+    "creative": "Creative Writing",
+    "analytical": "Analytical Breakdown",
+    "step_by_step": "Step-by-Step Solution",
+    "fun": "Fun & Engaging Response"
+}
+
+# Global hotkey to generate smart response for current clipboard content
+# This allows quick smart response generation without opening the dashboard
+# The text currently in the clipboard will be used to generate a response
+HOTKEY_SMART_RESPONSE = "ctrl+alt+r"
+
+# =============================================================================
 # CLIPBOARD SETTINGS
 # =============================================================================
 
@@ -234,12 +267,14 @@ def get_config_summary():
     return {
         'openai_enabled': OPENAI_ENABLED,
         'openai_model': OPENAI_MODEL,
+        'smart_response_enabled': SMART_RESPONSE_ENABLED,
         'clipboard_history_size': CLIPBOARD_HISTORY_SIZE,
         'dashboard_dimensions': f"{DASHBOARD_WIDTH}x{DASHBOARD_HEIGHT}",
         'hotkeys': {
             'toggle_dashboard': HOTKEY_TOGGLE_DASHBOARD,
             'save_note': HOTKEY_SAVE_NOTE,
-            'enhance_prompt': HOTKEY_ENHANCE_PROMPT
+            'enhance_prompt': HOTKEY_ENHANCE_PROMPT,
+            'smart_response': HOTKEY_SMART_RESPONSE
         },
         'debug_mode': DEBUG_MODE
     } 
