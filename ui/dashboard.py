@@ -7,7 +7,7 @@ This module contains the main dashboard window that orchestrates all UI componen
 import sys
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QTextEdit, QMessageBox, 
-                             QSplitter, QFrame, QScrollArea, QComboBox, QDialog,
+                             QSplitter, QFrame, QScrollArea, QComboBox,
                              QApplication, QProgressBar)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QFont, QIcon, QAction, QShortcut, QKeySequence
@@ -1077,38 +1077,97 @@ class Dashboard(QMainWindow):
         """
         Show a loading message for clipboard enhancement.
         """
-        # Create a simple loading dialog
-        self.loading_dialog = QDialog(self)
-        self.loading_dialog.setWindowTitle("Enhancing Prompt")
-        self.loading_dialog.setFixedSize(300, 100)
-        self.loading_dialog.setModal(True)
+        # Create a floating loading widget instead of a modal dialog
+        self.loading_widget = QWidget()
+        self.loading_widget.setWindowTitle("Enhancing Prompt")
+        self.loading_widget.setFixedSize(250, 80)
+        self.loading_widget.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint | 
+            Qt.WindowType.Tool | 
+            Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.loading_widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
+        # Create the main layout
         layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
         
-        # Loading label
+        # Create a styled container
+        container = QWidget()
+        container.setStyleSheet("""
+            QWidget {
+                background: rgba(52, 73, 94, 0.95);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+        """)
+        container_layout = QVBoxLayout()
+        container_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Loading label with spinner
+        loading_layout = QHBoxLayout()
+        
+        # Spinner dots
+        self.spinner_label = QLabel("⠋")
+        self.spinner_label.setStyleSheet("""
+            QLabel {
+                color: #e67e22;
+                font-size: 18px;
+                font-weight: bold;
+                background: transparent;
+            }
+        """)
+        
+        # Loading text
         self.loading_label = QLabel("Enhancing selected text...")
-        self.loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.loading_label)
+        self.loading_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 12px;
+                font-weight: bold;
+                background: transparent;
+            }
+        """)
         
-        # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 0)  # Indeterminate progress
-        layout.addWidget(self.progress_bar)
+        loading_layout.addWidget(self.spinner_label)
+        loading_layout.addWidget(self.loading_label)
+        loading_layout.addStretch()
         
-        self.loading_dialog.setLayout(layout)
+        container_layout.addLayout(loading_layout)
+        container.setLayout(container_layout)
+        layout.addWidget(container)
+        self.loading_widget.setLayout(layout)
+        
+        # Position the widget near the cursor
+        cursor_pos = self.cursor().pos()
+        screen_geometry = self.screen().geometry()
+        
+        # Calculate position to ensure widget stays on screen
+        x = min(max(cursor_pos.x() - 125, 10), screen_geometry.width() - 260)
+        y = min(max(cursor_pos.y() - 40, 10), screen_geometry.height() - 90)
+        
+        self.loading_widget.move(x, y)
         
         # Timer for updating loading animation
         self.loading_timer = QTimer()
         self.loading_timer.timeout.connect(self.update_loading_animation)
         self.loading_timer.start(100)
         
-        # Show the dialog
-        self.loading_dialog.show()
+        # Animation state
+        self.current_dot = 0
+        self.dots = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        
+        # Show the widget
+        self.loading_widget.show()
     
     def update_loading_animation(self):
         """
         Update the loading animation.
         """
+        # Update spinner animation
+        self.current_dot = (self.current_dot + 1) % len(self.dots)
+        self.spinner_label.setText(self.dots[self.current_dot])
+        
         # Simple text animation
         current_text = self.loading_label.text()
         if current_text.endswith("..."):
@@ -1161,9 +1220,9 @@ class Dashboard(QMainWindow):
         """
         if hasattr(self, 'loading_timer'):
             self.loading_timer.stop()
-        if hasattr(self, 'loading_dialog'):
-            self.loading_dialog.close()
-            self.loading_dialog = None
+        if hasattr(self, 'loading_widget'):
+            self.loading_widget.close()
+            self.loading_widget = None
     
     def force_close_loading_message(self):
         """
