@@ -802,7 +802,9 @@ class Dashboard(QMainWindow):
                 return
             
             # Additional safety check
-            if not self.clipboard_content_layout or not hasattr(self.clipboard_content_layout, 'count'):
+            try:
+                self.clipboard_content_layout.count()
+            except Exception as e:
                 return
             
             # Clear existing items
