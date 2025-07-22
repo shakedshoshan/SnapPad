@@ -65,7 +65,10 @@ AUTO_COPY_SMART_RESPONSE = True
 # Options: general, educational, code, creative, analytical, step_by_step, fun
 SMART_RESPONSE_DEFAULT_TYPE = "general"
 
-
+# Smart response visibility mode
+# Options: "hidden" - show nothing, no spinner or popup
+#          "popup" - show loading spinner and popup with response
+SMART_RESPONSE_VISIBILITY = "popup"
 
 # Global hotkey to generate smart response for current clipboard content
 # This allows quick smart response generation without opening the dashboard

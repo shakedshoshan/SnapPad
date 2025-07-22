@@ -1142,8 +1142,37 @@ class Dashboard(QMainWindow):
         print("Settings changed, applying new configuration...")
         print(f"New settings: {new_settings}")
         
+        # Reload config to get updated settings
+        self.reload_config()
+        
         # Rebuild the dashboard with new settings
         self.rebuild_dashboard(new_settings)
+    
+    def reload_config(self):
+        """
+        Reload the config module to get updated settings.
+        """
+        try:
+            import importlib
+            import config
+            importlib.reload(config)
+            print("Config reloaded successfully")
+        except Exception as e:
+            print(f"Error reloading config: {e}")
+    
+    def get_smart_response_visibility(self):
+        """
+        Get the smart response visibility setting from config.
+        
+        Returns:
+            str: The visibility mode ('hidden' or 'popup')
+        """
+        try:
+            import config
+            return getattr(config, 'SMART_RESPONSE_VISIBILITY', 'popup')
+        except Exception as e:
+            print(f"Error getting smart response visibility: {e}")
+            return 'popup'
     
     def rebuild_dashboard(self, settings):
         """
@@ -2459,18 +2488,31 @@ class Dashboard(QMainWindow):
                               "Please enter some text to generate a response for.")
             return
         
-        # Show loading spinner and disable button
-        self.smart_response_loading_spinner.start_animation()
-        self.generate_response_btn.setEnabled(False)
-        self.generate_response_btn.setText("Generating...")
-        self.copy_response_btn.setEnabled(False)
+        # Check smart response visibility setting
+        visibility_mode = self.get_smart_response_visibility()
         
-        # Create and start worker thread
-        self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
-        self.smart_response_worker.response_complete.connect(self.on_smart_response_complete)
-        self.smart_response_worker.response_failed.connect(self.on_smart_response_failed)
-        self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished)
-        self.smart_response_worker.start()
+        if visibility_mode == 'hidden':
+            # Hidden mode: no visual feedback, just generate and copy
+            print("Smart response in hidden mode - generating without visual feedback")
+            self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
+            self.smart_response_worker.response_complete.connect(self.on_smart_response_complete_hidden_ui)
+            self.smart_response_worker.response_failed.connect(self.on_smart_response_failed_hidden_ui)
+            self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished_hidden_ui)
+            self.smart_response_worker.start()
+        else:
+            # Popup mode: show loading and popup
+            # Show loading spinner and disable button
+            self.smart_response_loading_spinner.start_animation()
+            self.generate_response_btn.setEnabled(False)
+            self.generate_response_btn.setText("Generating...")
+            self.copy_response_btn.setEnabled(False)
+            
+            # Create and start worker thread
+            self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
+            self.smart_response_worker.response_complete.connect(self.on_smart_response_complete)
+            self.smart_response_worker.response_failed.connect(self.on_smart_response_failed)
+            self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished)
+            self.smart_response_worker.start()
     
     def on_smart_response_complete(self, generated_response):
         """
@@ -2479,34 +2521,25 @@ class Dashboard(QMainWindow):
         Args:
             generated_response (str): The generated response text
         """
-        # Display the generated response
+        # Display the generated response in the UI
         self.generated_response_display.setPlainText(generated_response)
         self.copy_response_btn.setEnabled(True)
         
-        # Automatically copy the generated response to clipboard
-        if self.clipboard_manager:
-            self.clipboard_manager.copy_to_clipboard(generated_response)
-            print(f"Generated response automatically copied to clipboard: {generated_response[:50]}...")
-        
-        # Replace the original input with the generated response
-        self.smart_response_input.setPlainText(generated_response)
-        
-        # Automatically paste the generated text to replace selected text
-        import keyboard
-        import time
-        time.sleep(0.1)  # Small delay to ensure clipboard is ready
-        keyboard.send('ctrl+v')
-        print("Generated response automatically pasted to replace selected text")
+        # Show popup with response
+        from .components import SmartResponsePopup
+        self.smart_response_popup = SmartResponsePopup(generated_response, self)
+        self.smart_response_popup.set_clipboard_manager(self.clipboard_manager)
+        self.smart_response_popup.show()
         
         # Show success status message
-        self.smart_response_status_label.setText("✓ Generated response pasted and input updated")
+        self.smart_response_status_label.setText("✓ Generated response popup shown")
         
         # Clear status message after 3 seconds
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(3000, lambda: self.smart_response_status_label.setText(""))
         
         print(f"Smart response generation completed successfully: {generated_response[:50]}...")
-        print("Original input replaced with generated response")
+        print("Response popup shown")
     
     def on_smart_response_failed(self, error_message):
         """
@@ -2598,15 +2631,25 @@ class Dashboard(QMainWindow):
                               "Please select some text before using Ctrl+Alt+R to generate a response.")
             return
         
-        # Show loading message
-        self.show_smart_response_loading_message()
+        # Check smart response visibility setting
+        visibility_mode = self.get_smart_response_visibility()
         
-        # Create and start worker thread for response generation
-        self.smart_response_worker = SmartResponseWorker(self.openai_manager, selected_text, "general")
-        self.smart_response_worker.response_complete.connect(self.on_smart_response_complete_with_replacement)
-        self.smart_response_worker.response_failed.connect(self.on_smart_response_failed_silent)
-        self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished_silent)
-        self.smart_response_worker.start()
+        if visibility_mode == 'hidden':
+            # Hidden mode: no visual feedback, just generate and copy
+            print("Smart response in hidden mode - generating without visual feedback")
+            self.smart_response_worker = SmartResponseWorker(self.openai_manager, selected_text, "general")
+            self.smart_response_worker.response_complete.connect(self.on_smart_response_complete_hidden)
+            self.smart_response_worker.response_failed.connect(self.on_smart_response_failed_hidden)
+            self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished_hidden)
+            self.smart_response_worker.start()
+        else:
+            # Popup mode: show loading and popup
+            self.show_smart_response_loading_message()
+            self.smart_response_worker = SmartResponseWorker(self.openai_manager, selected_text, "general")
+            self.smart_response_worker.response_complete.connect(self.on_smart_response_complete_with_replacement)
+            self.smart_response_worker.response_failed.connect(self.on_smart_response_failed_silent)
+            self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished_silent)
+            self.smart_response_worker.start()
     
     def show_smart_response_loading_message(self):
         """
@@ -2717,20 +2760,16 @@ class Dashboard(QMainWindow):
         Args:
             generated_response (str): The generated response
         """
-        if self.clipboard_manager:
-            # Copy generated response to clipboard
-            self.clipboard_manager.copy_to_clipboard(generated_response)
-            print(f"Generated response copied to clipboard: {generated_response[:50]}...")
-        
-        # Automatically paste the generated response to replace selected text
-        import keyboard
-        import time
-        time.sleep(0.2)  # Slightly longer delay to ensure clipboard is ready and user sees the process
-        keyboard.send('ctrl+v')
-        print("Generated response automatically pasted to replace selected text")
-        
         # Close loading dialog
         self.close_smart_response_loading_message()
+        
+        # Show popup with response
+        from .components import SmartResponsePopup
+        self.smart_response_popup = SmartResponsePopup(generated_response, self)
+        self.smart_response_popup.set_clipboard_manager(self.clipboard_manager)
+        self.smart_response_popup.show()
+        
+        print(f"Smart response popup shown with: {generated_response[:50]}...")
     
     def on_smart_response_failed_silent(self, error_message):
         """
@@ -2758,3 +2797,82 @@ class Dashboard(QMainWindow):
         if hasattr(self, 'smart_response_loading_widget'):
             self.smart_response_loading_widget.close()
             self.smart_response_loading_widget = None
+    
+    def on_smart_response_complete_hidden(self, generated_response):
+        """
+        Handle successful smart response generation in hidden mode.
+        
+        Args:
+            generated_response (str): The generated response
+        """
+        if self.clipboard_manager:
+            # Copy generated response to clipboard
+            self.clipboard_manager.copy_to_clipboard(generated_response)
+            print(f"Generated response copied to clipboard (hidden mode): {generated_response[:50]}...")
+        
+        # Automatically paste the generated response to replace selected text
+        import keyboard
+        import time
+        time.sleep(0.2)  # Slightly longer delay to ensure clipboard is ready
+        keyboard.send('ctrl+v')
+        print("Generated response automatically pasted to replace selected text (hidden mode)")
+    
+    def on_smart_response_failed_hidden(self, error_message):
+        """
+        Handle failed smart response generation in hidden mode.
+        
+        Args:
+            error_message (str): The error message
+        """
+        print(f"Hidden smart response generation failed: {error_message}")
+    
+    def on_smart_response_worker_finished_hidden(self):
+        """
+        Handle hidden smart response worker thread completion.
+        """
+        print("Hidden smart response worker finished")
+    
+    def on_smart_response_complete_hidden_ui(self, generated_response):
+        """
+        Handle successful smart response generation in hidden mode (UI).
+        
+        Args:
+            generated_response (str): The generated response
+        """
+        # Display the generated response in the UI
+        self.generated_response_display.setPlainText(generated_response)
+        self.copy_response_btn.setEnabled(True)
+        
+        # Automatically copy the generated response to clipboard
+        if self.clipboard_manager:
+            self.clipboard_manager.copy_to_clipboard(generated_response)
+            print(f"Generated response automatically copied to clipboard (hidden UI mode): {generated_response[:50]}...")
+        
+        # Replace the original input with the generated response
+        self.smart_response_input.setPlainText(generated_response)
+        
+        # Show success status message
+        self.smart_response_status_label.setText("✓ Generated response copied to clipboard")
+        
+        # Clear status message after 3 seconds
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(3000, lambda: self.smart_response_status_label.setText(""))
+        
+        print(f"Smart response generation completed successfully (hidden UI mode): {generated_response[:50]}...")
+    
+    def on_smart_response_failed_hidden_ui(self, error_message):
+        """
+        Handle failed smart response generation in hidden mode (UI).
+        
+        Args:
+            error_message (str): The error message
+        """
+        QMessageBox.warning(self, "Response Generation Failed", 
+                          f"Failed to generate response: {error_message}")
+        print(f"Response generation failed (hidden UI mode): {error_message}")
+    
+    def on_smart_response_worker_finished_hidden_ui(self):
+        """
+        Handle hidden smart response worker thread completion (UI).
+        """
+        print("Hidden smart response worker finished (UI)")

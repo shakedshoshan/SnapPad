@@ -859,19 +859,33 @@ class NotesWindow(QMainWindow):
                               "Please enter some text to generate a response for.")
             return
         
-        # Show loading spinner and disable button
-        self.smart_response_loading_spinner.start_animation()
-        self.smart_response_generate_btn.setEnabled(False)
-        self.smart_response_generate_btn.setText("Generating...")
-        self.smart_response_copy_btn.setEnabled(False)
+        # Check smart response visibility setting
+        visibility_mode = self.get_smart_response_visibility()
         
-        # Create and start worker thread
-        from .workers import SmartResponseWorker
-        self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
-        self.smart_response_worker.response_complete.connect(self.on_smart_response_complete)
-        self.smart_response_worker.response_failed.connect(self.on_smart_response_failed)
-        self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished)
-        self.smart_response_worker.start()
+        if visibility_mode == 'hidden':
+            # Hidden mode: no visual feedback, just generate and copy
+            print("Smart response in hidden mode - generating without visual feedback")
+            from .workers import SmartResponseWorker
+            self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
+            self.smart_response_worker.response_complete.connect(self.on_smart_response_complete_hidden)
+            self.smart_response_worker.response_failed.connect(self.on_smart_response_failed_hidden)
+            self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished_hidden)
+            self.smart_response_worker.start()
+        else:
+            # Popup mode: show loading and popup
+            # Show loading spinner and disable button
+            self.smart_response_loading_spinner.start_animation()
+            self.smart_response_generate_btn.setEnabled(False)
+            self.smart_response_generate_btn.setText("Generating...")
+            self.smart_response_copy_btn.setEnabled(False)
+            
+            # Create and start worker thread
+            from .workers import SmartResponseWorker
+            self.smart_response_worker = SmartResponseWorker(self.openai_manager, user_input, "general")
+            self.smart_response_worker.response_complete.connect(self.on_smart_response_complete)
+            self.smart_response_worker.response_failed.connect(self.on_smart_response_failed)
+            self.smart_response_worker.finished.connect(self.on_smart_response_worker_finished)
+            self.smart_response_worker.start()
     
     def on_smart_response_complete(self, generated_response):
         """
@@ -880,34 +894,26 @@ class NotesWindow(QMainWindow):
         Args:
             generated_response (str): The generated response text
         """
-        # Display the generated response
+        # Display the generated response in the UI
         self.smart_response_display.setPlainText(generated_response)
         self.smart_response_copy_btn.setEnabled(True)
         
-        # Automatically copy the generated response to clipboard
-        if hasattr(self, 'clipboard_manager') and self.clipboard_manager:
-            self.clipboard_manager.copy_to_clipboard(generated_response)
-            print(f"Generated response automatically copied to clipboard: {generated_response[:50]}...")
-        
-        # Replace the original input with the generated response
-        self.smart_response_input.setPlainText(generated_response)
-        
-        # Automatically paste the generated text to replace selected text
-        import keyboard
-        import time
-        time.sleep(0.1)  # Small delay to ensure clipboard is ready
-        keyboard.send('ctrl+v')
-        print("Generated response automatically pasted to replace selected text")
+        # Show popup with response
+        from .components import SmartResponsePopup
+        self.smart_response_popup = SmartResponsePopup(generated_response, self)
+        if hasattr(self, 'clipboard_manager'):
+            self.smart_response_popup.set_clipboard_manager(self.clipboard_manager)
+        self.smart_response_popup.show()
         
         # Show success status message
-        self.smart_response_status_label.setText("✓ Generated response pasted and input updated")
+        self.smart_response_status_label.setText("✓ Generated response popup shown")
         
         # Clear status message after 3 seconds
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(3000, lambda: self.smart_response_status_label.setText(""))
         
         print(f"Smart response generation completed successfully: {generated_response[:50]}...")
-        print("Original input replaced with generated response")
+        print("Response popup shown")
     
     def on_smart_response_failed(self, error_message):
         """
@@ -941,4 +947,63 @@ class NotesWindow(QMainWindow):
             # Show feedback for manual copy
             self.smart_response_status_label.setText("✓ Generated response copied to clipboard")
             from PyQt6.QtCore import QTimer
-            QTimer.singleShot(2000, lambda: self.smart_response_status_label.setText("")) 
+            QTimer.singleShot(2000, lambda: self.smart_response_status_label.setText(""))
+    
+    def on_smart_response_complete_hidden(self, generated_response):
+        """
+        Handle successful smart response generation in hidden mode.
+        
+        Args:
+            generated_response (str): The generated response
+        """
+        # Display the generated response in the UI
+        self.smart_response_display.setPlainText(generated_response)
+        self.smart_response_copy_btn.setEnabled(True)
+        
+        # Automatically copy the generated response to clipboard
+        if hasattr(self, 'clipboard_manager') and self.clipboard_manager:
+            self.clipboard_manager.copy_to_clipboard(generated_response)
+            print(f"Generated response automatically copied to clipboard (hidden mode): {generated_response[:50]}...")
+        
+        # Replace the original input with the generated response
+        self.smart_response_input.setPlainText(generated_response)
+        
+        # Show success status message
+        self.smart_response_status_label.setText("✓ Generated response copied to clipboard")
+        
+        # Clear status message after 3 seconds
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(3000, lambda: self.smart_response_status_label.setText(""))
+        
+        print(f"Smart response generation completed successfully (hidden mode): {generated_response[:50]}...")
+    
+    def on_smart_response_failed_hidden(self, error_message):
+        """
+        Handle failed smart response generation in hidden mode.
+        
+        Args:
+            error_message (str): The error message
+        """
+        QMessageBox.warning(self, "Response Generation Failed", 
+                          f"Failed to generate response: {error_message}")
+        print(f"Response generation failed (hidden mode): {error_message}")
+    
+    def on_smart_response_worker_finished_hidden(self):
+        """
+        Handle hidden smart response worker thread completion.
+        """
+        print("Hidden smart response worker finished")
+    
+    def get_smart_response_visibility(self):
+        """
+        Get the smart response visibility setting from config.
+        
+        Returns:
+            str: The visibility mode ('hidden' or 'popup')
+        """
+        try:
+            import config
+            return getattr(config, 'SMART_RESPONSE_VISIBILITY', 'popup')
+        except Exception as e:
+            print(f"Error getting smart response visibility: {e}")
+            return 'popup' 

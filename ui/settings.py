@@ -48,7 +48,8 @@ class SettingsWindow(QMainWindow):
                 {'id': 'smart_response', 'name': '🧠 AI Smart Response', 'enabled': True, 'order': 3}
             ],
             'columns': 1,
-            'max_features_per_column': 3
+            'max_features_per_column': 3,
+            'smart_response_visibility': 'popup'
         }
         
         # Current settings
@@ -373,6 +374,89 @@ class SettingsWindow(QMainWindow):
         layout_frame.setLayout(layout_layout)
         main_layout.addWidget(layout_frame)
         
+        # Smart Response Settings Section
+        smart_response_frame = QFrame()
+        smart_response_frame.setFrameStyle(QFrame.Shape.Box)
+        smart_response_frame.setStyleSheet("""
+            QFrame {
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                background: #ffffff;
+                padding: 8px;
+            }
+        """)
+        smart_response_layout = QVBoxLayout()
+        smart_response_layout.setSpacing(10)
+        smart_response_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Smart response header
+        smart_response_header = QLabel("Smart Response Settings")
+        smart_response_header.setStyleSheet("""
+            QLabel {
+                font-weight: bold; 
+                font-size: 14px;
+                color: #2c3e50;
+                margin-bottom: 5px;
+                background: transparent;
+            }
+        """)
+        smart_response_layout.addWidget(smart_response_header)
+        
+        # Smart response visibility setting
+        visibility_layout = QHBoxLayout()
+        visibility_layout.setSpacing(10)
+        
+        visibility_label = QLabel("Response Visibility:")
+        visibility_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #2c3e50;
+                background: transparent;
+            }
+        """)
+        
+        self.visibility_combo = QComboBox()
+        self.visibility_combo.addItem("Show Popup", "popup")
+        self.visibility_combo.addItem("Hidden", "hidden")
+        self.visibility_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 12px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QComboBox:focus {
+                border-color: #4a90e2;
+            }
+        """)
+        
+        visibility_layout.addWidget(visibility_label)
+        visibility_layout.addWidget(self.visibility_combo)
+        visibility_layout.addStretch()
+        
+        smart_response_layout.addLayout(visibility_layout)
+        
+        # Smart response description
+        smart_response_desc = QLabel("Hidden: No visual feedback. Popup: Shows loading spinner and response popup.")
+        smart_response_desc.setStyleSheet("""
+            QLabel {
+                font-size: 11px;
+                color: #7f8c8d;
+                font-style: italic;
+                background: transparent;
+                padding: 5px;
+                border: 1px solid #e9ecef;
+                border-radius: 4px;
+                background-color: #f8f9fa;
+            }
+        """)
+        smart_response_layout.addWidget(smart_response_desc)
+        
+        smart_response_frame.setLayout(smart_response_layout)
+        main_layout.addWidget(smart_response_frame)
+        
         # Action buttons
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(10)
@@ -479,7 +563,7 @@ class SettingsWindow(QMainWindow):
     
     def save_settings(self):
         """
-        Save current settings to file.
+        Save current settings to file and update config.py.
         """
         settings_file = os.path.join(os.path.expanduser("~"), ".snappad_settings.json")
         
@@ -487,9 +571,12 @@ class SettingsWindow(QMainWindow):
             # Update settings from UI
             self.update_settings_from_ui()
             
-            # Save to file
+            # Save to JSON file
             with open(settings_file, 'w') as f:
                 json.dump(self.current_settings, f, indent=2)
+            
+            # Update config.py with smart response visibility setting
+            self.update_config_file()
             
             # Emit signal to notify parent
             self.settings_changed.emit(self.current_settings)
@@ -503,6 +590,46 @@ class SettingsWindow(QMainWindow):
             QMessageBox.warning(self, "Save Error", 
                               f"Failed to save settings: {str(e)}")
             print(f"Error saving settings: {e}")
+    
+    def update_config_file(self):
+        """
+        Update config.py with the smart response visibility setting.
+        """
+        try:
+            config_file = "config.py"
+            if not os.path.exists(config_file):
+                print("Config file not found, skipping config update")
+                return
+            
+            # Read current config file
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config_content = f.read()
+            
+            # Get the new visibility setting
+            visibility = self.current_settings.get('smart_response_visibility', 'popup')
+            
+            # Update the SMART_RESPONSE_VISIBILITY line
+            import re
+            pattern = r'SMART_RESPONSE_VISIBILITY\s*=\s*["\']([^"\']+)["\']'
+            replacement = f'SMART_RESPONSE_VISIBILITY = "{visibility}"'
+            
+            if re.search(pattern, config_content):
+                # Replace existing setting
+                new_content = re.sub(pattern, replacement, config_content)
+            else:
+                # Add setting after SMART_RESPONSE_DEFAULT_TYPE
+                pattern = r'(SMART_RESPONSE_DEFAULT_TYPE\s*=\s*["\'][^"\']+["\']\s*\n)'
+                replacement = f'\\1\n# Smart response visibility mode\n# Options: "hidden" - show nothing, no spinner or popup\n#          "popup" - show loading spinner and popup with response\nSMART_RESPONSE_VISIBILITY = "{visibility}"\n\n'
+                new_content = re.sub(pattern, replacement, config_content)
+            
+            # Write updated config file
+            with open(config_file, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            
+            print(f"Config file updated with SMART_RESPONSE_VISIBILITY = {visibility}")
+            
+        except Exception as e:
+            print(f"Error updating config file: {e}")
     
     def load_current_settings(self):
         """
@@ -525,6 +652,12 @@ class SettingsWindow(QMainWindow):
         self.columns_spinbox.setValue(self.current_settings['columns'])
         self.max_features_spinbox.setValue(self.current_settings['max_features_per_column'])
         
+        # Load smart response settings
+        visibility = self.current_settings.get('smart_response_visibility', 'popup')
+        index = self.visibility_combo.findData(visibility)
+        if index >= 0:
+            self.visibility_combo.setCurrentIndex(index)
+        
         # Update preview
         self.update_layout_preview()
     
@@ -545,6 +678,9 @@ class SettingsWindow(QMainWindow):
         # Update layout settings
         self.current_settings['columns'] = self.columns_spinbox.value()
         self.current_settings['max_features_per_column'] = self.max_features_spinbox.value()
+        
+        # Update smart response settings
+        self.current_settings['smart_response_visibility'] = self.visibility_combo.currentData()
     
     def toggle_selected_feature(self):
         """
