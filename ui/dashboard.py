@@ -8,7 +8,7 @@ import sys
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QTextEdit, QMessageBox, 
                              QSplitter, QFrame, QScrollArea, QComboBox,
-                             QApplication, QProgressBar)
+                             QApplication, QProgressBar, QDialog)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QFont, QIcon, QAction, QShortcut, QKeySequence
 from typing import List, Dict, Optional, Callable
@@ -66,10 +66,7 @@ class Dashboard(QMainWindow):
         # Initialize worker thread
         self.openai_worker = None
         
-        # Set up the user interface
-        self.setup_ui()
-        
-        # Load settings and apply them
+        # Load settings and apply them (this will set up the UI)
         self.load_and_apply_settings()
         
         # Apply initial size adjustment if settings were loaded
@@ -785,8 +782,9 @@ class Dashboard(QMainWindow):
         self.database_manager = database_manager
         self.openai_manager = openai_manager
         
-        # Load initial notes
-        self.refresh_notes()
+        # Load initial notes and clipboard history with a small delay to ensure UI is ready
+        QTimer.singleShot(100, self.refresh_notes)
+        QTimer.singleShot(100, self.refresh_clipboard_history)
     
     def refresh_clipboard_history(self):
         """
@@ -838,7 +836,8 @@ class Dashboard(QMainWindow):
                 display_text = item[:max_len] + "..." if len(item) > max_len else item
                 
                 clip_label = ClickableLabel(f"{i+1}. {display_text}")
-                clip_label.clicked.connect(lambda text, full_text=item: self.copy_to_clipboard(full_text))
+                # Fix: Use a default parameter to capture the current value of item
+                clip_label.clicked.connect(lambda checked, full_text=item: self.copy_to_clipboard(full_text))
                 self.clipboard_content_layout.addWidget(clip_label)
         
         # Add stretch to push items to top
@@ -946,7 +945,9 @@ class Dashboard(QMainWindow):
                 return
             
             # Additional safety check
-            if not self.notes_content_layout or not hasattr(self.notes_content_layout, 'count'):
+            try:
+                self.notes_content_layout.count()
+            except Exception as e:
                 return
             
             # Clear existing notes
@@ -960,7 +961,7 @@ class Dashboard(QMainWindow):
         
         # Get, filter, and sort notes
         all_notes = self.database_manager.get_all_notes()
-        notes = self._filter_and_sort_notes(all_notes)
+        notes = self._filter_and_sort_notes(all_notes, self.search_input, self.sort_combo)
         
         if not notes:
             # Check if we have notes but they're filtered out
@@ -1503,6 +1504,7 @@ class Dashboard(QMainWindow):
         Returns:
             QFrame: The notes frame
         """
+
         notes_frame = QFrame()
         notes_frame.setFrameStyle(QFrame.Shape.Box)
         notes_frame.setStyleSheet("""
@@ -1670,12 +1672,14 @@ class Dashboard(QMainWindow):
         self.notes_content_layout = QVBoxLayout()
         self.notes_content_layout.setSpacing(2)
         self.notes_content_layout.setContentsMargins(2, 2, 2, 2)
+
         self.notes_content.setLayout(self.notes_content_layout)
         self.notes_scroll.setWidget(self.notes_content)
         
         notes_layout.addWidget(self.notes_scroll)
         notes_frame.setLayout(notes_layout)
         
+
         return notes_frame
     
     def create_prompt_frame(self):
@@ -2067,6 +2071,7 @@ class Dashboard(QMainWindow):
         except Exception as e:
             print(f"Error loading settings: {e}")
             # Continue with default layout
+            self.setup_ui()
     
     def toggle_visibility_safe(self):
         """
