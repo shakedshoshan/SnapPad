@@ -78,16 +78,16 @@ class SettingsWindow(QMainWindow):
         # Main layout
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(12)
         
         # Title
         title = QLabel("⚙️ Dashboard Settings")
         title.setStyleSheet("""
             QLabel {
                 font-weight: bold; 
-                font-size: 18px;
+                font-size: 16px;
                 color: #2c3e50;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
                 background: transparent;
             }
         """)
@@ -101,12 +101,12 @@ class SettingsWindow(QMainWindow):
                 border: 1px solid #d1d5db;
                 border-radius: 8px;
                 background: #ffffff;
-                padding: 8px;
+                padding: 6px;
             }
         """)
         features_layout = QVBoxLayout()
-        features_layout.setSpacing(10)
-        features_layout.setContentsMargins(15, 15, 15, 15)
+        features_layout.setSpacing(8)
+        features_layout.setContentsMargins(12, 12, 12, 12)
         
         # Features header
         features_header = QLabel("Dashboard Features")
@@ -236,44 +236,22 @@ class SettingsWindow(QMainWindow):
         features_frame.setLayout(features_layout)
         main_layout.addWidget(features_frame)
         
-        # Layout Section
-        layout_frame = QFrame()
-        layout_frame.setFrameStyle(QFrame.Shape.Box)
-        layout_frame.setStyleSheet("""
-            QFrame {
-                border: 1px solid #d1d5db;
-                border-radius: 8px;
-                background: #ffffff;
-                padding: 8px;
-            }
-        """)
-        layout_layout = QVBoxLayout()
-        layout_layout.setSpacing(10)
-        layout_layout.setContentsMargins(15, 15, 15, 15)
+        # Layout Configuration Section (Compact)
+        layout_layout = QHBoxLayout()
+        layout_layout.setSpacing(15)
+        layout_layout.setContentsMargins(0, 5, 0, 5)
         
-        # Layout header
-        layout_header = QLabel("Layout Configuration")
-        layout_header.setStyleSheet("""
-            QLabel {
-                font-weight: bold; 
-                font-size: 14px;
-                color: #2c3e50;
-                margin-bottom: 5px;
-                background: transparent;
-            }
-        """)
-        layout_layout.addWidget(layout_header)
-        
-        # Number of columns
+        # Columns setting
         columns_layout = QHBoxLayout()
-        columns_layout.setSpacing(10)
+        columns_layout.setSpacing(8)
         
-        columns_label = QLabel("Number of columns:")
+        columns_label = QLabel("📐 Columns:")
         columns_label.setStyleSheet("""
             QLabel {
-                font-size: 12px;
+                font-size: 11px;
                 color: #2c3e50;
                 background: transparent;
+                font-weight: bold;
             }
         """)
         
@@ -285,10 +263,11 @@ class SettingsWindow(QMainWindow):
             QSpinBox {
                 border: 1px solid #d1d5db;
                 border-radius: 4px;
-                padding: 6px;
-                font-size: 12px;
+                padding: 4px 6px;
+                font-size: 11px;
                 background-color: #ffffff;
                 color: #2c3e50;
+                min-width: 50px;
             }
             QSpinBox:focus {
                 border-color: #4a90e2;
@@ -298,20 +277,18 @@ class SettingsWindow(QMainWindow):
         
         columns_layout.addWidget(columns_label)
         columns_layout.addWidget(self.columns_spinbox)
-        columns_layout.addStretch()
         
-        layout_layout.addLayout(columns_layout)
-        
-        # Max features per column
+        # Max features setting
         max_features_layout = QHBoxLayout()
-        max_features_layout.setSpacing(10)
+        max_features_layout.setSpacing(8)
         
-        max_features_label = QLabel("Max features per column:")
+        max_features_label = QLabel("Max/col:")
         max_features_label.setStyleSheet("""
             QLabel {
-                font-size: 12px;
+                font-size: 11px;
                 color: #2c3e50;
                 background: transparent;
+                font-weight: bold;
             }
         """)
         
@@ -323,10 +300,11 @@ class SettingsWindow(QMainWindow):
             QSpinBox {
                 border: 1px solid #d1d5db;
                 border-radius: 4px;
-                padding: 6px;
-                font-size: 12px;
+                padding: 4px 6px;
+                font-size: 11px;
                 background-color: #ffffff;
                 color: #2c3e50;
+                min-width: 50px;
             }
             QSpinBox:focus {
                 border-color: #4a90e2;
@@ -335,83 +313,38 @@ class SettingsWindow(QMainWindow):
         
         max_features_layout.addWidget(max_features_label)
         max_features_layout.addWidget(self.max_features_spinbox)
-        max_features_layout.addStretch()
         
-        layout_layout.addLayout(max_features_layout)
-        
-        # Layout preview
-        self.layout_preview_label = QLabel("Layout Preview: Single column layout")
+        # Preview info
+        self.layout_preview_label = QLabel("Single column • 360px")
         self.layout_preview_label.setStyleSheet("""
             QLabel {
-                font-size: 11px;
-                color: #7f8c8d;
-                font-style: italic;
-                background: transparent;
-                padding: 5px;
-                border: 1px solid #e9ecef;
-                border-radius: 4px;
-                background-color: #f8f9fa;
-            }
-        """)
-        layout_layout.addWidget(self.layout_preview_label)
-        
-        # Size preview
-        self.size_preview_label = QLabel("Expected width: 360px")
-        self.size_preview_label.setStyleSheet("""
-            QLabel {
                 font-size: 10px;
-                color: #27ae60;
-                font-weight: bold;
+                color: #7f8c8d;
                 background: transparent;
-                padding: 3px;
-                border: 1px solid #27ae60;
-                border-radius: 3px;
-                background-color: #d5f4e6;
+                font-style: italic;
             }
         """)
-        layout_layout.addWidget(self.size_preview_label)
         
-        layout_frame.setLayout(layout_layout)
-        main_layout.addWidget(layout_frame)
+        layout_layout.addLayout(columns_layout)
+        layout_layout.addLayout(max_features_layout)
+        layout_layout.addWidget(self.layout_preview_label)
+        layout_layout.addStretch()
         
-        # Smart Response Settings Section
-        smart_response_frame = QFrame()
-        smart_response_frame.setFrameStyle(QFrame.Shape.Box)
-        smart_response_frame.setStyleSheet("""
-            QFrame {
-                border: 1px solid #d1d5db;
-                border-radius: 8px;
-                background: #ffffff;
-                padding: 8px;
-            }
-        """)
-        smart_response_layout = QVBoxLayout()
+        main_layout.addLayout(layout_layout)
+        
+        # Smart Response Settings Section (Compact)
+        smart_response_layout = QHBoxLayout()
         smart_response_layout.setSpacing(10)
-        smart_response_layout.setContentsMargins(15, 15, 15, 15)
+        smart_response_layout.setContentsMargins(0, 5, 0, 5)
         
-        # Smart response header
-        smart_response_header = QLabel("Smart Response Settings")
-        smart_response_header.setStyleSheet("""
-            QLabel {
-                font-weight: bold; 
-                font-size: 14px;
-                color: #2c3e50;
-                margin-bottom: 5px;
-                background: transparent;
-            }
-        """)
-        smart_response_layout.addWidget(smart_response_header)
-        
-        # Smart response visibility setting
-        visibility_layout = QHBoxLayout()
-        visibility_layout.setSpacing(10)
-        
-        visibility_label = QLabel("Response Visibility:")
-        visibility_label.setStyleSheet("""
+        # Smart response label
+        smart_response_label = QLabel("🧠 Smart Response:")
+        smart_response_label.setStyleSheet("""
             QLabel {
                 font-size: 12px;
                 color: #2c3e50;
                 background: transparent;
+                font-weight: bold;
             }
         """)
         
@@ -422,44 +355,39 @@ class SettingsWindow(QMainWindow):
             QComboBox {
                 border: 1px solid #d1d5db;
                 border-radius: 4px;
-                padding: 6px;
-                font-size: 12px;
+                padding: 4px 8px;
+                font-size: 11px;
                 background-color: #ffffff;
                 color: #2c3e50;
+                min-width: 100px;
             }
             QComboBox:focus {
                 border-color: #4a90e2;
             }
         """)
         
-        visibility_layout.addWidget(visibility_label)
-        visibility_layout.addWidget(self.visibility_combo)
-        visibility_layout.addStretch()
-        
-        smart_response_layout.addLayout(visibility_layout)
-        
-        # Smart response description
-        smart_response_desc = QLabel("Hidden: No visual feedback. Popup: Shows loading spinner and response popup.")
-        smart_response_desc.setStyleSheet("""
+        # Help text
+        help_text = QLabel("(Hidden: no feedback, Popup: shows dialog)")
+        help_text.setStyleSheet("""
             QLabel {
-                font-size: 11px;
+                font-size: 10px;
                 color: #7f8c8d;
-                font-style: italic;
                 background: transparent;
-                padding: 5px;
-                border: 1px solid #e9ecef;
-                border-radius: 4px;
-                background-color: #f8f9fa;
+                font-style: italic;
             }
         """)
-        smart_response_layout.addWidget(smart_response_desc)
         
-        smart_response_frame.setLayout(smart_response_layout)
-        main_layout.addWidget(smart_response_frame)
+        smart_response_layout.addWidget(smart_response_label)
+        smart_response_layout.addWidget(self.visibility_combo)
+        smart_response_layout.addWidget(help_text)
+        smart_response_layout.addStretch()
+        
+        main_layout.addLayout(smart_response_layout)
         
         # Action buttons
         buttons_layout = QHBoxLayout()
-        buttons_layout.setSpacing(10)
+        buttons_layout.setSpacing(8)
+        buttons_layout.setContentsMargins(0, 10, 0, 0)
         
         # Reset to defaults button
         self.reset_btn = QPushButton("Reset to Defaults")
@@ -470,8 +398,8 @@ class SettingsWindow(QMainWindow):
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 10px 15px;
-                font-size: 12px;
+                padding: 8px 12px;
+                font-size: 11px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -488,8 +416,8 @@ class SettingsWindow(QMainWindow):
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 10px 15px;
-                font-size: 12px;
+                padding: 8px 12px;
+                font-size: 11px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -506,8 +434,8 @@ class SettingsWindow(QMainWindow):
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 10px 15px;
-                font-size: 12px;
+                padding: 8px 12px;
+                font-size: 11px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -529,8 +457,8 @@ class SettingsWindow(QMainWindow):
         Configure window properties for the settings window.
         """
         self.setWindowTitle("SnapPad - Settings")
-        self.setMinimumSize(500, 600)
-        self.resize(600, 700)
+        self.setMinimumSize(480, 550)
+        self.resize(520, 600)
         
         # Center window on screen
         screen = QApplication.primaryScreen()
@@ -735,17 +663,17 @@ class SettingsWindow(QMainWindow):
         max_features = self.max_features_spinbox.value()
         
         if columns == 1:
-            preview_text = f"Layout Preview: Single column layout (max {max_features} features per column)"
+            layout_type = "Single column"
             expected_width = 360
         elif columns == 2:
-            preview_text = f"Layout Preview: Two column layout (max {max_features} features per column)"
+            layout_type = "Two columns"
             expected_width = 576
         else:
-            preview_text = f"Layout Preview: Three column layout (max {max_features} features per column)"
+            layout_type = "Three columns"
             expected_width = 792
         
+        preview_text = f"{layout_type} • {expected_width}px"
         self.layout_preview_label.setText(preview_text)
-        self.size_preview_label.setText(f"Expected width: {expected_width}px")
     
     def reset_to_defaults(self):
         """
