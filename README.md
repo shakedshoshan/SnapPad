@@ -12,6 +12,7 @@
 SnapPad solves the common productivity challenges of losing clipboard content and managing quick notes efficiently. It's a comprehensive solution that combines clipboard history management, persistent note-taking, and AI-powered features to enhance your workflow.
 
 ### Core Problems Solved:
+
 - **Lost Clipboard Content**: Never lose important copied text again with automatic clipboard history tracking
 - **Scattered Notes**: Centralized, persistent note storage with SQLite database
 - **Poor AI Prompts**: AI-powered prompt enhancement for better AI interactions
